@@ -39,6 +39,12 @@ type POSClientProps = {
   session: any;
 };
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export default function POSClient({ products, customers: initialCustomers, session }: POSClientProps) {
   const { showAlert } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
@@ -195,7 +201,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
     
     const paid = parseFloat(amountPaid) || 0;
     if (paid < cartTotal) {
-      showAlert('warning', 'Insufficient Payment', `Amount paid ($${paid.toFixed(2)}) is less than total ($${cartTotal.toFixed(2)})`);
+      showAlert('warning', 'Insufficient Payment', `Amount paid (${formatCurrency(paid)}) is less than total (${formatCurrency(cartTotal)})`);
       return;
     }
 
@@ -361,7 +367,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                             <p className="font-medium text-gray-900">{product.name}</p>
                             <p className="text-sm text-gray-500">ID: {product.id} | Stock: {product.quantity} {product.unit}</p>
                           </div>
-                          <p className="text-lg font-bold text-blue-600">${product.sellingPrice.toFixed(2)}</p>
+                          <p className="text-lg font-bold text-blue-600">{formatCurrency(product.sellingPrice)}</p>
                         </div>
                       </div>
                     ))
@@ -470,7 +476,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                         onChange={(e) => setAddItemForm({ ...addItemForm, discountType: e.target.value as 'amount' | 'percentage' })}
                         className="border border-gray-300 rounded px-3 py-2"
                       >
-                        <option value="amount">$</option>
+                        <option value="amount">Rs.</option>
                         <option value="percentage">%</option>
                       </select>
                     </div>
@@ -480,7 +486,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                   <div className="pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-lg font-semibold text-gray-700">Subtotal:</span>
-                      <span className="text-2xl font-bold text-blue-600">${formSubtotal.toFixed(2)}</span>
+                      <span className="text-2xl font-bold text-blue-600">{formatCurrency(formSubtotal)}</span>
                     </div>
                     <button
                       onClick={addToCart}
@@ -506,16 +512,16 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                       <div className="flex-1">
                         <p className="font-medium text-gray-900">{item.productName}</p>
                         <p className="text-sm text-gray-500">
-                          {item.quantity} {item.unit} × ${item.price.toFixed(2)}
+                          {item.quantity} {item.unit} × {formatCurrency(item.price)}
                           {item.discount > 0 && (
                             <span className="text-red-600 ml-2">
-                              (-{item.discountType === 'percentage' ? `${item.discount}%` : `$${item.discount}`})
+                              (-{item.discountType === 'percentage' ? `${item.discount}%` : formatCurrency(item.discount)})
                             </span>
                           )}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-gray-900">${item.subtotal.toFixed(2)}</span>
+                        <span className="font-bold text-gray-900">{formatCurrency(item.subtotal)}</span>
                         <button
                           onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
                           className="text-red-500 hover:text-red-700"
@@ -620,15 +626,15 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-medium">${(cartTotal + totalDiscount).toFixed(2)}</span>
+                  <span className="font-medium">{formatCurrency(cartTotal + totalDiscount)}</span>
                 </div>
                 <div className="flex justify-between text-red-600">
                   <span>Discount:</span>
-                  <span className="font-medium">-${totalDiscount.toFixed(2)}</span>
+                  <span className="font-medium">-{formatCurrency(totalDiscount)}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span className="text-blue-600">${cartTotal.toFixed(2)}</span>
+                  <span className="text-blue-600">{formatCurrency(cartTotal)}</span>
                 </div>
               </div>
               
@@ -653,7 +659,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-green-800">Change:</span>
-                      <span className="text-lg font-bold text-green-600">${changeAmount.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-green-600">{formatCurrency(changeAmount)}</span>
                     </div>
                   </div>
                 )}

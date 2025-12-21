@@ -51,6 +51,12 @@ type DateRange = {
   end: Date | null;
 };
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 const normalizeDate = (date: Date) => {
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
@@ -544,7 +550,7 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
                       <td className="px-4 py-3 text-sm text-gray-600">{formatDate(sale.date)}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{sale.customer?.name || 'Walk-in'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{sale.cashier}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-green-600">${sale.totalAmount.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-green-600">{formatCurrency(sale.totalAmount)}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
                           <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium ${getStatusColor(deliveryStatus)}`}>
@@ -693,15 +699,15 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
                     <tr key={item.id} className="border-b border-gray-200">
                       <td className="py-2">{item.productName}</td>
                       <td className="text-center py-2">{item.quantity} {item.unit}</td>
-                      <td className="text-right py-2">${item.price.toFixed(2)}</td>
+                      <td className="text-right py-2">{formatCurrency(item.price)}</td>
                       <td className="text-right py-2">
                         {item.discount > 0
                           ? item.discountType === 'percentage'
                             ? `${item.discount}%`
-                            : `$${item.discount.toFixed(2)}`
+                            : formatCurrency(item.discount)
                           : '-'}
                       </td>
-                      <td className="text-right py-2 font-medium">${item.subtotal.toFixed(2)}</td>
+                      <td className="text-right py-2 font-medium">{formatCurrency(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -712,24 +718,24 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="font-medium">
-                    ${(selectedSale.items.reduce((sum, item) => sum + item.subtotal, 0)).toFixed(2)}
+                    {formatCurrency(selectedSale.items.reduce((sum, item) => sum + item.subtotal, 0))}
                   </span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t-2 border-gray-300 pt-2">
                   <span>Total:</span>
-                  <span className="text-blue-600">${selectedSale.totalAmount.toFixed(2)}</span>
+                  <span className="text-blue-600">{formatCurrency(selectedSale.totalAmount)}</span>
                 </div>
                 
                 {selectedSale.paymentStatus === 'Paid' && (
                   <>
                     <div className="flex justify-between text-green-600">
                       <span>Amount Paid:</span>
-                      <span className="font-medium">${selectedSale.amountPaid.toFixed(2)}</span>
+                      <span className="font-medium">{formatCurrency(selectedSale.amountPaid)}</span>
                     </div>
                     {selectedSale.changeGiven > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Change:</span>
-                        <span className="font-medium">${selectedSale.changeGiven.toFixed(2)}</span>
+                        <span className="font-medium">{formatCurrency(selectedSale.changeGiven)}</span>
                       </div>
                     )}
                   </>
@@ -741,7 +747,7 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
                     {selectedSale.payments.map((payment) => (
                       <div key={payment.id} className="flex justify-between text-xs text-gray-600">
                         <span>{formatDate(payment.date)}</span>
-                        <span>${payment.amount.toFixed(2)}</span>
+                        <span>{formatCurrency(payment.amount)}</span>
                       </div>
                     ))}
                   </div>

@@ -35,6 +35,12 @@ type InventoryClientProps = {
 
 const AVAILABLE_UNITS = ['pcs', 'kg', 'g', 'l', 'ml', 'box', 'pack', 'm', 'cm', 'ft'];
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export default function InventoryClient({ inventoryItems, categories, session }: InventoryClientProps) {
   const { showAlert, showConfirm } = useAlert();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -234,13 +240,13 @@ export default function InventoryClient({ inventoryItems, categories, session }:
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Total Cost</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              ${inventoryItems.reduce((acc, item) => acc + (Number(item.costPrice) * item.quantity), 0).toFixed(2)}
+              {formatCurrency(inventoryItems.reduce((acc, item) => acc + (Number(item.costPrice) * item.quantity), 0))}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Total Selling Price</p>
             <p className="text-3xl font-bold text-green-600 mt-2">
-              ${inventoryItems.reduce((acc, item) => acc + (Number(item.sellingPrice) * item.quantity), 0).toFixed(2)}
+              {formatCurrency(inventoryItems.reduce((acc, item) => acc + (Number(item.sellingPrice) * item.quantity), 0))}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
@@ -467,10 +473,10 @@ export default function InventoryClient({ inventoryItems, categories, session }:
                           </span>
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-900">
-                          ${Number(item.costPrice).toFixed(2)}
+                          {formatCurrency(Number(item.costPrice))}
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-900">
-                          ${Number(item.sellingPrice).toFixed(2)}
+                          {formatCurrency(Number(item.sellingPrice))}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`font-semibold ${item.quantity < item.lowStockThreshold ? 'text-red-600' : 'text-gray-900'}`}>

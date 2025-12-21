@@ -47,6 +47,12 @@ type BooksClientProps = {
   session: any;
 };
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export default function BooksClient({ customers, creditSales, session }: BooksClientProps) {
   const { showAlert } = useAlert();
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
@@ -178,11 +184,11 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
           )
         );
 
-        const changeSegment = change > 0 ? ` • Change $${change.toFixed(2)}` : '';
+        const changeSegment = change > 0 ? ` • Change ${formatCurrency(change)}` : '';
         showAlert(
           'success',
           'Payment Successful',
-          `Paid $${appliedAmount.toFixed(2)}${changeSegment} • Remaining Due $${updatedBalance.toFixed(2)}`
+          `Paid ${formatCurrency(appliedAmount)}${changeSegment} • Remaining Due ${formatCurrency(updatedBalance)}`
         );
 
         setSelectedSales([]);
@@ -242,7 +248,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-gray-600">Total Balance:</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    ${remainingBalance.toFixed(2)}
+                    {formatCurrency(remainingBalance)}
                   </p>
                 </div>
               )}
@@ -255,7 +261,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm text-gray-600">Amount Due:</label>
-                    <p className="text-2xl font-bold text-gray-900">${selectedTotal.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedTotal)}</p>
                   </div>
                   <div>
                     <label className="text-sm text-gray-600 block mb-1">Payment Amount:</label>
@@ -274,7 +280,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                       <label className="text-sm text-green-700">Balance to Return:</label>
                       <p className="text-xl font-bold text-green-600">
-                        ${(parseFloat(paymentAmount) - selectedTotal).toFixed(2)}
+                        {formatCurrency(parseFloat(paymentAmount) - selectedTotal)}
                       </p>
                     </div>
                   )}
@@ -355,7 +361,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                               <div className="text-right">
                                 <p className="text-sm text-gray-600">Total:</p>
                                 <p className="text-lg font-bold text-gray-900">
-                                  ${Number(sale.totalAmount).toFixed(2)}
+                                  {formatCurrency(Number(sale.totalAmount))}
                                 </p>
                               </div>
                             </div>
@@ -368,7 +374,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                                   <span>
                                     {item.product.name} x {item.quantity} {item.product.unit}
                                   </span>
-                                  <span>${Number(item.subtotal).toFixed(2)}</span>
+                                  <span>{formatCurrency(Number(item.subtotal))}</span>
                                 </div>
                               ))}
                             </div>
@@ -377,12 +383,12 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                             <div className="flex justify-between items-center text-sm">
                               <div>
                                 {totalPaid > 0 && (
-                                  <p className="text-green-600">Paid: ${totalPaid.toFixed(2)}</p>
+                                  <p className="text-green-600">Paid: {formatCurrency(totalPaid)}</p>
                                 )}
                                 {isFullyPaid ? (
                                   <p className="text-green-600 font-semibold">✓ Fully Paid</p>
                                 ) : (
-                                  <p className="text-red-600 font-semibold">Due: ${amountDue.toFixed(2)}</p>
+                                  <p className="text-red-600 font-semibold">Due: {formatCurrency(amountDue)}</p>
                                 )}
                               </div>
                               <span className={`px-2 py-1 rounded text-xs font-medium ${

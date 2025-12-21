@@ -100,7 +100,7 @@ async function main() {
     for (let j = 0; j < 10; j++) { // 10 products per category
       if (productIndex >= productNames.length) break;
       
-      const costPrice = (Math.random() * 50 + 5).toFixed(2); // $5-$55
+      const costPrice = (Math.random() * 50 + 5).toFixed(2); // Rs.5-Rs.55
       const sellingPrice = (parseFloat(costPrice) * (1.2 + Math.random() * 0.5)).toFixed(2); // 20-70% markup
       const quantity = Math.floor(Math.random() * 100) + 10; // 10-110
       const unit = units[Math.floor(Math.random() * units.length)];

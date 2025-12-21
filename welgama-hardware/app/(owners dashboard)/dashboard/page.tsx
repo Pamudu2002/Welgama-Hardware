@@ -3,6 +3,12 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { LayoutDashboard, DollarSign, ShoppingCart, Package, Users, TrendingUp, TrendingDown } from 'lucide-react';
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export default async function DashboardPage() {
   const session = await auth();
   
@@ -14,7 +20,7 @@ export default async function DashboardPage() {
   const stats = [
     { 
       title: "Today's Revenue", 
-      value: 'Rs.0.00', 
+      value: formatCurrency(0), 
       change: '+0%', 
       trending: 'up',
       icon: DollarSign,
@@ -158,7 +164,7 @@ export default async function DashboardPage() {
                   <tr key={transaction.id} className="hover:bg-blue-50/50 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{transaction.customer}</td>
                     <td className="px-6 py-4 text-gray-600">{transaction.items}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">${transaction.amount.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{formatCurrency(transaction.amount)}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{transaction.date}</td>
                   </tr>
                 ))}

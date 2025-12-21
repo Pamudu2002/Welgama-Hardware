@@ -157,7 +157,7 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
         {/* Cost Price */}
         <div>
           <label htmlFor="costPrice" className="block text-sm font-medium text-gray-700 mb-2">
-            Cost Price ($) *
+            Cost Price (Rs.) *
           </label>
           <input
             type="number"
@@ -174,7 +174,7 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
         {/* Selling Price */}
         <div>
           <label htmlFor="sellingPrice" className="block text-sm font-medium text-gray-700 mb-2">
-            Selling Price ($) *
+            Selling Price (Rs.) *
           </label>
           <input
             type="number"

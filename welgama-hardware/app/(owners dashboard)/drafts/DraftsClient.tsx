@@ -26,6 +26,12 @@ type DraftsClientProps = {
   customers: Customer[];
 };
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export default function DraftsClient({ drafts, customers }: DraftsClientProps) {
   const router = useRouter();
   const { showAlert, showConfirm } = useAlert();
@@ -145,7 +151,7 @@ export default function DraftsClient({ drafts, customers }: DraftsClientProps) {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total:</span>
                     <span className="text-xl font-bold text-blue-600">
-                      ${getTotalAmount(draft.items).toFixed(2)}
+                      {formatCurrency(getTotalAmount(draft.items))}
                     </span>
                   </div>
                 </div>

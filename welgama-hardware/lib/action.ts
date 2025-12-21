@@ -37,6 +37,12 @@ const CreateUserSchema = z.object({
   password: z.string().min(6),
 });
 
+const formatCurrency = (value: number) =>
+  `Rs.${value.toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export async function createCashier(formData: FormData) {
   // 1. SECURITY CHECK: Only Owners can do this
   const session = await auth();
@@ -353,7 +359,7 @@ export async function completeSale(data: {
     revalidatePath('/pos');
     revalidatePath('/dashboard');
     revalidatePath('/orders');
-    return { success: true, message: `Sale completed! Total: $${totalAmount.toFixed(2)}, Change: $${changeGiven.toFixed(2)}` };
+    return { success: true, message: `Sale completed! Total: ${formatCurrency(totalAmount)}, Change: ${formatCurrency(changeGiven)}` };
   } catch (error) {
     console.error('Sale error:', error);
     return { success: false, message: 'Failed to complete sale.' };
@@ -429,7 +435,7 @@ export async function addToBook(data: { customerId: number; items: any[]; isDeli
 
     revalidatePath('/pos');
     revalidatePath('/books');
-    return { success: true, message: `Added to book! Amount: $${totalAmount.toFixed(2)}` };
+    return { success: true, message: `Added to book! Amount: ${formatCurrency(totalAmount)}` };
   } catch (error) {
     console.error('Book error:', error);
     return { success: false, message: 'Failed to add to book.' };
@@ -487,7 +493,7 @@ export async function makePayment(data: {
             customerId: customerId,
             amount: paymentForSale,
             date: paymentDate,
-            note: remainingAmount > 0 ? `Overpayment. Balance: $${remainingAmount.toFixed(2)}` : null,
+            note: remainingAmount > 0 ? `Overpayment. Balance: ${formatCurrency(remainingAmount)}` : null,
           },
         });
 
@@ -525,8 +531,8 @@ export async function makePayment(data: {
     const appliedAmount = amount - remainingAmount;
     const overpayment = Math.max(remainingAmount, 0);
     const message = overpayment > 0 
-      ? `Payment of $${appliedAmount.toFixed(2)} recorded. Change returned: $${overpayment.toFixed(2)}`
-      : `Payment of $${appliedAmount.toFixed(2)} recorded successfully!`;
+      ? `Payment of ${formatCurrency(appliedAmount)} recorded. Change returned: ${formatCurrency(overpayment)}`
+      : `Payment of ${formatCurrency(appliedAmount)} recorded successfully!`;
 
     revalidatePath('/books');
     return { success: true, message, appliedAmount, change: overpayment, remainingBalance: updatedBalance };
