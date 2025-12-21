@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (status === "loading") return <div className="flex h-screen items-center justify-center">Loading...</div>;
 
   return (
-    <div className="flex h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       
       {/* Sidebar - Always Hidden, Opens on Toggle */}
       <Sidebar 

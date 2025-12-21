@@ -291,7 +291,7 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
           <button
             type="submit"
             disabled={isPending}
-            className="w-full bg-linear-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending ? 'Adding Product...' : 'Add Product'}
           </button>

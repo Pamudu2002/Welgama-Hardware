@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { LayoutDashboard, ShoppingCart, Package, Users, LogOut, Bell, X, Box, BookOpen, FileText, Receipt } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, LogOut, X, Box, BookOpen, FileText, Receipt, ClipboardList, DollarSign } from 'lucide-react';
 
 type SidebarProps = {
   isOpen: boolean;
@@ -17,9 +17,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Get role directly from session to ensure it updates
   const userRole = session?.user?.role || 'Cashier';
-  
-  // Get user initial
-  const userInitial = session?.user?.name?.[0]?.toUpperCase() || userRole[0];
 
   // 1. Define the Common Links (Visible to Everyone)
   const menuItems = [
@@ -48,6 +45,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       href: '/books', 
       icon: BookOpen 
     },
+    { 
+      name: 'Other Expenses', 
+      href: '/expenses', 
+      icon: DollarSign 
+    },
   ];
 
   // 2. Add specific links ONLY if the user is an Owner
@@ -59,12 +61,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       icon: LayoutDashboard 
     });
 
-    // Add "Manage Staff" to the bottom
-    menuItems.push({ 
-      name: 'Manage Staff', 
-      href: '/cashiers', 
-      icon: Users 
-    });
+    // Owner-only utilities
+    menuItems.push(
+      {
+        name: 'Logs',
+        href: '/logs',
+        icon: ClipboardList,
+      },
+      { 
+        name: 'Manage Staff', 
+        href: '/cashiers', 
+        icon: Users 
+      }
+    );
   }
 
   return (
@@ -101,24 +110,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             >
               <X className="h-5 w-5" />
             </button>
-          </div>
-
-          {/* User Profile Section */}
-          <div className="border-b border-gray-200 bg-linear-to-br from-blue-50 to-indigo-50 p-4">
-            <div className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br from-blue-600 to-indigo-600 text-lg font-bold text-white shadow-lg">
-                {userInitial}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">{session?.user?.name || 'User'}</p>
-                <p className="text-xs text-gray-500">{userRole}</p>
-              </div>
-              {/* Notification Bell */}
-              <button className="relative rounded-full p-2 text-gray-400 hover:bg-gray-100 transition-colors">
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-              </button>
-            </div>
           </div>
 
           {/* Dynamic Navigation */}
