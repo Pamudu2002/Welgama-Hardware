@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { LayoutDashboard, ShoppingCart, Package, Users, LogOut, Bell, X, Box } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Package, Users, LogOut, Bell, X, Box, BookOpen, FileText, Receipt } from 'lucide-react';
 
 type SidebarProps = {
   isOpen: boolean;
@@ -29,9 +29,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       icon: ShoppingCart 
     },
     { 
+      name: 'Orders', 
+      href: '/orders', 
+      icon: Receipt 
+    },
+    { 
+      name: 'Drafts', 
+      href: '/drafts', 
+      icon: FileText 
+    },
+    { 
       name: 'Inventory', 
       href: '/inventory', 
       icon: Package 
+    },
+    { 
+      name: 'Books (Credit)', 
+      href: '/books', 
+      icon: BookOpen 
     },
   ];
 

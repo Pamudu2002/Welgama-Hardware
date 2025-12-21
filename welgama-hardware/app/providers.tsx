@@ -2,11 +2,14 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
+import { AlertProvider } from './components/AlertProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      {children}
+      <AlertProvider>
+        {children}
+      </AlertProvider>
     </SessionProvider>
   );
 }

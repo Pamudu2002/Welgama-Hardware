@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Sale" ADD COLUMN     "amountPaid" DECIMAL(10,2) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "changeGiven" DECIMAL(10,2) NOT NULL DEFAULT 0.0,
+ADD COLUMN     "isDelivered" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "orderStatus" TEXT NOT NULL DEFAULT 'completed';

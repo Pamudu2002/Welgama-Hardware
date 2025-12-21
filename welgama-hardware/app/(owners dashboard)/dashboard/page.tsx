@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const stats = [
     { 
       title: "Today's Revenue", 
-      value: '$0.00', 
+      value: 'Rs.0.00', 
       change: '+0%', 
       trending: 'up',
       icon: DollarSign,

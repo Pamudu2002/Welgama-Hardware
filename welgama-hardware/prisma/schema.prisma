@@ -15,7 +15,8 @@ model User {
   password  String
   role      String   // "Owner" or "Cashier"
   createdAt DateTime @default(now())
-  sales     Sale[]   
+  sales     Sale[]
+  inventoryLogs InventoryLog[]
   
 }
 
@@ -38,6 +39,20 @@ model Product {
   lowStockThreshold Int         @default(5)
   
   saleItems         SaleItem[]
+  inventoryLogs     InventoryLog[]
+}
+
+model InventoryLog {
+  id              Int      @id @default(autoincrement())
+  productId       Int
+  product         Product  @relation(fields: [productId], references: [id])
+  quantityChange  Int      // Positive for additions, negative for removals
+  quantityBefore  Int
+  quantityAfter   Int
+  reason          String
+  changedAt       DateTime @default(now())
+  userId          Int?
+  user            User?    @relation(fields: [userId], references: [id])
 }
 
 // --- CUSTOMERS & CREDIT ---
@@ -63,7 +78,11 @@ model Sale {
   
   date          DateTime   @default(now())
   totalAmount   Decimal    @db.Decimal(10, 2)
-  paymentStatus String     
+  paymentStatus String     // "Paid", "Credit", "Partial"
+  orderStatus   String     @default("completed") // "completed", "pending_delivery", "pending_payment"
+  amountPaid    Decimal    @default(0.0) @db.Decimal(10, 2)
+  changeGiven   Decimal    @default(0.0) @db.Decimal(10, 2)
+  isDelivered   Boolean    @default(true)
   
   items         SaleItem[]
   payments      Payment[]
@@ -78,7 +97,9 @@ model SaleItem {
   product       Product  @relation(fields: [productId], references: [id])
   
   quantity      Int
-  priceSnapshot Decimal  @db.Decimal(10, 2) 
+  priceSnapshot Decimal  @db.Decimal(10, 2)
+  discount      Decimal  @default(0.0) @db.Decimal(10, 2)
+  discountType  String   @default("amount") // "amount" or "percentage"
   subtotal      Decimal  @db.Decimal(10, 2)
 }
 
@@ -93,4 +114,14 @@ model Payment {
   date        DateTime @default(now())
   amount      Decimal  @db.Decimal(10, 2)
   note        String?  
+}
+
+// --- DRAFTS ---
+model Draft {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  customerId  Int?
+  items       String   // JSON string of cart items
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
