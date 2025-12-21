@@ -91,7 +91,7 @@ async function logActivity({
         userId: normalizeUserId(userId),
         action,
         description,
-        metadata,
+        metadata: metadata ?? undefined,
       },
     });
   } catch (error) {
@@ -784,7 +784,7 @@ export async function saveDraft(data: {
 
     const draft = await prisma.draft.create({
       data: {
-        userId: parseInt(session.user.id),
+        userId: Number(session.user.id),
         customerId: data.customerId,
         items: JSON.stringify(data.items),
       },
@@ -891,7 +891,7 @@ export async function addExpense({
 
     const expense = await prisma.expense.create({
       data: {
-        userId,
+        userId: userId!,
         reason,
         amount,
       },

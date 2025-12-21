@@ -417,9 +417,7 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
   const handleMarkDelivered = async (saleId: number) => {
     const confirmed = await showConfirm(
       'Mark as Delivered?',
-      'Are you sure you want to mark this order as delivered and completed?',
-      'Mark as Complete',
-      'green'
+      'Are you sure you want to mark this order as delivered and completed?'
     );
 
     if (confirmed) {

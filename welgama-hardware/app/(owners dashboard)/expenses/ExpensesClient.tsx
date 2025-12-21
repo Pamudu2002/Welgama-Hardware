@@ -59,7 +59,7 @@ export default function ExpensesClient({
 
       if (result.success && result.expense) {
         const newExpense: ExpenseData = {
-          id: result.expense.id,
+          id: String(result.expense.id),
           reason: result.expense.reason,
           amount: Number(result.expense.amount),
           createdAt: result.expense.createdAt,

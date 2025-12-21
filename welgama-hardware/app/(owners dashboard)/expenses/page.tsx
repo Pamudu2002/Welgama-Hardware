@@ -41,7 +41,7 @@ export default async function ExpensesPage() {
   return (
     <ExpensesClient
       initialExpenses={expenses.map((exp) => ({
-        id: exp.id,
+        id: String(exp.id),
         reason: exp.reason,
         amount: Number(exp.amount),
         createdAt: exp.createdAt.toISOString(),
