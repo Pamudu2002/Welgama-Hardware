@@ -21,6 +21,7 @@ export default async function POSPage() {
       id: true,
       name: true,
       sellingPrice: true,
+      costPrice: true,
       quantity: true,
       unit: true,
     },
@@ -33,6 +34,7 @@ export default async function POSPage() {
   const products = productsRaw.map(p => ({
     ...p,
     sellingPrice: Number(p.sellingPrice),
+    costPrice: Number(p.costPrice),
   }));
 
   // Fetch customers

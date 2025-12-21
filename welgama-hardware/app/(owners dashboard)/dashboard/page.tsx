@@ -28,11 +28,7 @@ export default async function DashboardPage() {
       },
     },
     include: {
-      items: {
-        include: {
-          product: true,
-        },
-      },
+      items: true,
     },
   });
 
@@ -53,7 +49,7 @@ export default async function DashboardPage() {
   // Calculate total cost of goods sold
   const totalCost = todaySales.reduce((sum, sale) => {
     const saleCost = sale.items.reduce((itemSum, item) => {
-      return itemSum + (Number(item.product.costPrice) * item.quantity);
+      return itemSum + (Number(item.costPriceSnapshot) * item.quantity);
     }, 0);
     return sum + saleCost;
   }, 0);
@@ -87,11 +83,7 @@ export default async function DashboardPage() {
           },
         },
         include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
+          items: true,
         },
       });
 
@@ -110,7 +102,7 @@ export default async function DashboardPage() {
       // Calculate cost of goods sold for the day
       const dayCost = daySales.reduce((sum, sale) => {
         const saleCost = sale.items.reduce((itemSum, item) => {
-          return itemSum + (Number(item.product.costPrice) * item.quantity);
+          return itemSum + (Number(item.costPriceSnapshot) * item.quantity);
         }, 0);
         return sum + saleCost;
       }, 0);

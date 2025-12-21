@@ -31,11 +31,7 @@ export async function GET(request: NextRequest) {
         },
       },
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        items: true,
       },
     });
 
@@ -56,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Calculate total cost of goods sold
     const totalCost = sales.reduce((sum, sale) => {
       const saleCost = sale.items.reduce((itemSum, item) => {
-        return itemSum + (Number(item.product.costPrice) * item.quantity);
+        return itemSum + (Number(item.costPriceSnapshot) * item.quantity);
       }, 0);
       return sum + saleCost;
     }, 0);
