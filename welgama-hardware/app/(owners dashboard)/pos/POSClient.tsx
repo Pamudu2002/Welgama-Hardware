@@ -20,6 +20,7 @@ type Customer = {
   name: string;
   phone: string | null;
   address: string | null;
+  balance?: number | null;
 };
 
 type CartItem = {
@@ -37,7 +38,6 @@ type CartItem = {
 
 type POSClientProps = {
   products: Product[];
-  customers: Customer[];
   session: any;
 };
 
@@ -47,7 +47,7 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-export default function POSClient({ products, customers: initialCustomers, session }: POSClientProps) {
+export default function POSClient({ products, session }: POSClientProps) {
   const { showAlert } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -55,10 +55,12 @@ export default function POSClient({ products, customers: initialCustomers, sessi
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [selectedCustomerInfo, setSelectedCustomerInfo] = useState<Customer | null>(null);
+  const [isCustomerSearchLoading, setIsCustomerSearchLoading] = useState(false);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<null | 'complete' | 'book' | 'draft' | 'customer'>(null);
-  const [customers, setCustomers] = useState(initialCustomers);
   const [loadedDraftId, setLoadedDraftId] = useState<number | null>(null);
   
   // Payment input state
@@ -139,6 +141,73 @@ export default function POSClient({ products, customers: initialCustomers, sessi
   // Use search results instead of client-side filtering
   const filteredProducts = searchResults;
 
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer.id);
+    setSelectedCustomerInfo(customer);
+    setCustomerSearch('');
+    setCustomerResults([]);
+    setShowNewCustomerForm(false);
+  };
+
+  const clearCustomerSelection = () => {
+    setSelectedCustomer(null);
+    setSelectedCustomerInfo(null);
+    setCustomerSearch('');
+    setCustomerResults([]);
+  };
+
+  // Fetch customers from API when search input changes
+  useEffect(() => {
+    if (!customerSearch.trim()) {
+      setCustomerResults([]);
+      setIsCustomerSearchLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    const controller = new AbortController();
+
+    const fetchCustomers = async () => {
+      setIsCustomerSearchLoading(true);
+      try {
+        const params = new URLSearchParams({
+          search: customerSearch.trim(),
+          limit: '25',
+        });
+
+        const response = await fetch(`/api/customers?${params}`, { signal: controller.signal });
+        if (!response.ok) {
+          if (isActive) {
+            setCustomerResults([]);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (isActive) {
+          setCustomerResults(data.data || []);
+        }
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
+        console.error('Failed to search customers:', error);
+        if (isActive) {
+          setCustomerResults([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsCustomerSearchLoading(false);
+        }
+      }
+    };
+
+    fetchCustomers();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [customerSearch]);
+
   // Calculate subtotal for add form
   const formSubtotal = useMemo(() => {
     if (!addItemForm.product) return 0;
@@ -193,15 +262,6 @@ export default function POSClient({ products, customers: initialCustomers, sessi
       discountType: 'amount',
     });
   };
-
-  // Filter customers
-  const filteredCustomers = useMemo(() => {
-    if (!customerSearch) return customers;
-    return customers.filter(c =>
-      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-      c.phone?.includes(customerSearch)
-    );
-  }, [customers, customerSearch]);
 
   // Calculate totals
   const cartTotal = useMemo(() => {
@@ -317,10 +377,15 @@ export default function POSClient({ products, customers: initialCustomers, sessi
       const result = await createCustomer(formData);
       if (result.success && result.customer) {
         showAlert('success', 'Customer Added!', result.message);
-        setCustomers([...customers, result.customer]);
         setSelectedCustomer(result.customer.id);
+        setSelectedCustomerInfo({
+          ...result.customer,
+          balance: result.customer.balance ? Number(result.customer.balance) : null,
+        });
+        setCustomerResults([]);
         setNewCustomer({ name: '', phone: '', address: '' });
         setShowNewCustomerForm(false);
+        setCustomerSearch('');
       } else {
         showAlert('error', 'Failed', result.message);
       }
@@ -465,7 +530,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                             setAddItemForm({ ...addItemForm, quantity: 1 });
                           }
                         }}
-                        onKeyPress={(e) => {
+                        onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             if (addItemForm.quantity < 1) {
                               setAddItemForm({ ...addItemForm, quantity: 1 });
@@ -493,7 +558,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                       step="0.01"
                       value={addItemForm.price}
                       onChange={(e) => setAddItemForm({ ...addItemForm, price: parseFloat(e.target.value) || 0 })}
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           addToCart();
                         }
@@ -511,7 +576,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                         step="0.01"
                         value={addItemForm.discount}
                         onChange={(e) => setAddItemForm({ ...addItemForm, discount: parseFloat(e.target.value) || 0 })}
-                        onKeyPress={(e) => {
+                        onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             addToCart();
                           }
@@ -640,26 +705,101 @@ export default function POSClient({ products, customers: initialCustomers, sessi
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Search customer..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                  <select
-                    value={selectedCustomer || ''}
-                    onChange={(e) => setSelectedCustomer(e.target.value ? parseInt(e.target.value) : null)}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="">Walk-in Customer</option>
-                    {filteredCustomers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name} {customer.phone ? `- ${customer.phone}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search customer..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-gray-500">Serving</p>
+                      <p className="font-semibold text-gray-900">
+                        {selectedCustomerInfo ? selectedCustomerInfo.name : 'Walk-in Customer'}
+                      </p>
+                      {selectedCustomerInfo?.phone && (
+                        <p className="text-xs text-gray-500">{selectedCustomerInfo.phone}</p>
+                      )}
+                    </div>
+                    {selectedCustomerInfo && (
+                      <button
+                        onClick={clearCustomerSelection}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {customerSearch.trim() !== '' && (
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-200 shadow-inner bg-gradient-to-b from-gray-50 to-white">
+                      {isCustomerSearchLoading ? (
+                      <div className="p-6 text-center">
+                        <Spinner className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                        <p className="text-sm text-gray-600 font-medium">Searching customers...</p>
+                      </div>
+                    ) : customerResults.length === 0 ? (
+                      <div className="p-6 text-center">
+                        <div className="h-10 w-10 mx-auto mb-2 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Search className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <p className="text-sm text-gray-600 font-medium">No customers found</p>
+                        <p className="text-xs text-gray-400 mt-1">Try a different search term</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {customerResults.map((customer, index) => (
+                          <button
+                            key={customer.id}
+                            onClick={() => handleSelectCustomer(customer)}
+                            className={`w-full text-left p-4 flex items-center justify-between gap-3 transition-all duration-200 group ${
+                              selectedCustomer === customer.id 
+                                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' 
+                                : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50/30 hover:shadow-sm'
+                            } ${index === 0 ? 'rounded-t-xl' : ''} ${index === customerResults.length - 1 ? 'rounded-b-xl' : ''}`}
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-all ${
+                                selectedCustomer === customer.id
+                                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30'
+                                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-100 group-hover:to-indigo-100'
+                              }`}>
+                                <User className={`h-5 w-5 ${
+                                  selectedCustomer === customer.id ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
+                                }`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-semibold truncate ${
+                                  selectedCustomer === customer.id ? 'text-blue-900' : 'text-gray-900'
+                                }`}>
+                                  {customer.name}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {customer.phone || 'No phone'}
+                                  {customer.address ? ` • ${customer.address}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className={`flex-shrink-0 text-xs font-bold px-3 py-1 rounded-full transition-all ${
+                              selectedCustomer === customer.id
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white'
+                            }`}>
+                              {selectedCustomer === customer.id ? 'Selected' : 'Select'}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
