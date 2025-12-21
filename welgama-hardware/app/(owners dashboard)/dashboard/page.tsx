@@ -160,7 +160,7 @@ export default async function DashboardPage() {
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Owner Dashboard
               </h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">Welcome back, {session?.user?.name || session?.user?.username || 'Owner'}!</p>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Welcome back, {session?.user?.name || 'Owner'}!</p>
             </div>
           </div>
         </div>
