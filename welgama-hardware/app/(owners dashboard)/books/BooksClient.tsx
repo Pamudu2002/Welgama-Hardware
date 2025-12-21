@@ -32,6 +32,7 @@ type CreditSale = {
     subtotal: any;
     product: {
       name: string;
+      unit: string;
     };
   }[];
   payments: {
