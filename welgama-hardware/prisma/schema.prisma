@@ -12,6 +12,7 @@ model User {
   username      String         @unique
   password      String
   role          String
+  active        Boolean        @default(true)
   createdAt     DateTime       @default(now())
   activityLogs  ActivityLog[]
   inventoryLogs InventoryLog[]

@@ -1,7 +1,7 @@
 // app/(dashboard)/dashboard/page.tsx
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, DollarSign, ShoppingCart, Package, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { LayoutDashboard, DollarSign, ShoppingCart, Package, Users, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 
 const formatCurrency = (value: number) =>
   `Rs.${value.toLocaleString('en-LK', {
@@ -72,11 +72,11 @@ export default async function DashboardPage() {
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 rounded-2xl bg-linear-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
-              <LayoutDashboard className="h-8 w-8 text-white" />
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <BarChart3 className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Owner Dashboard
               </h1>
               <p className="text-gray-600 mt-1">Welcome back, {session?.user?.name || 'Owner'}!</p>
@@ -151,7 +151,7 @@ export default async function DashboardPage() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-linear-to-r from-blue-50 to-indigo-50">
+              <thead className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Items</th>

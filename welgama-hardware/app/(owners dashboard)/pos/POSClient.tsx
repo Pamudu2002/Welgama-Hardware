@@ -328,12 +328,28 @@ export default function POSClient({ products, customers: initialCustomers, sessi
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-          <ShoppingCart className="h-8 w-8 text-blue-600" />
-          Point of Sale
-        </h1>
+    <div className="min-h-screen">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-400 opacity-10 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-indigo-400 opacity-10 blur-3xl"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto w-full px-4 py-6">
+        {/* Page Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Point of Sale
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Process sales and manage transactions</p>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Product Search & Selection */}

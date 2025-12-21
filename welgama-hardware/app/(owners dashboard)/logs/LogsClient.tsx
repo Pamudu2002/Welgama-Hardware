@@ -137,6 +137,20 @@ const getActionConfig = (action: string): ActionConfig => {
       icon: Users,
       label: 'Staff Created',
     },
+    'staff.activate': {
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-700',
+      borderColor: 'border-green-200',
+      icon: Users,
+      label: 'Staff Activated',
+    },
+    'staff.deactivate': {
+      bgColor: 'bg-gray-50',
+      textColor: 'text-gray-700',
+      borderColor: 'border-gray-200',
+      icon: Users,
+      label: 'Staff Deactivated',
+    },
     'draft.create': {
       bgColor: 'bg-slate-50',
       textColor: 'text-slate-700',
@@ -460,53 +474,70 @@ export default function LogsClient({ initialLogs, initialCursor }: LogsClientPro
   };
 
   return (
-    <div className="relative">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-indigo-200 opacity-50 blur-3xl" />
-        <div className="absolute -bottom-32 -left-16 h-64 w-64 rounded-full bg-blue-200 opacity-40 blur-3xl" />
+    <div className="min-h-screen">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-400 opacity-10 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-indigo-400 opacity-10 blur-3xl"></div>
       </div>
 
-      <div className="relative mx-auto max-w-6xl space-y-8">
-        <header className="rounded-3xl bg-white/90 p-6 shadow-xl shadow-blue-500/10 border border-white/40">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-500">Owner Tools</p>
-              <h1 className="mt-2 text-3xl font-bold text-gray-900">Activity Logs</h1>
-              <p className="text-sm text-gray-500">Live audit trail for every action taken across the system.</p>
+      <div className="relative max-w-7xl mx-auto w-full px-4 py-6">
+        {/* Page Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
             </div>
-            <div className="rounded-2xl bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white shadow-lg">
-              <p className="text-xs uppercase tracking-wider text-white/70">Tracking</p>
-              <p className="text-2xl font-semibold">{logs.length}</p>
-              <p className="text-xs text-white/70">events from {actorCount} users</p>
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Activity Logs
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Live audit trail for every action taken across the system</p>
             </div>
           </div>
-        </header>
+        </div>
+
+        {/* Stats Card */}
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Events</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{logs.length}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Active Users</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">{actorCount}</p>
+            </div>
+          </div>
+        </div>
 
         {/* Date Filter */}
-        <div className="flex justify-end items-center gap-3">
-          <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-          <div className="relative">
-            <button
-              ref={calendarButtonRef}
-              type="button"
-              onClick={() => setIsCalendarOpen((prev) => !prev)}
-              aria-label="Select date range"
-              title={dateRangeLabel}
-              className={`h-11 w-11 flex items-center justify-center rounded-full border transition-colors
-                ${hasDateRange
-                  ? 'bg-blue-50 text-blue-600 border-blue-200'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
-            >
-              <CalendarIcon className="h-5 w-5" />
-            </button>
-            {isCalendarOpen && (
-              <div
-                ref={calendarRef}
-                className="absolute right-0 mt-2 w-72 z-30 drop-shadow-2xl"
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 mb-6">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+            <div className="relative">
+              <button
+                ref={calendarButtonRef}
+                type="button"
+                onClick={() => setIsCalendarOpen((prev) => !prev)}
+                aria-label="Select date range"
+                title={dateRangeLabel}
+                className={`h-11 w-11 flex items-center justify-center rounded-full border transition-colors
+                  ${hasDateRange
+                    ? 'bg-blue-50 text-blue-600 border-blue-200'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
               >
-                <DateRangeCalendar value={dateRange} onChange={setDateRange} />
-              </div>
-            )}
+                <CalendarIcon className="h-5 w-5" />
+              </button>
+              {isCalendarOpen && (
+                <div
+                  ref={calendarRef}
+                  className="absolute right-0 mt-2 w-72 z-30 drop-shadow-2xl"
+                >
+                  <DateRangeCalendar value={dateRange} onChange={setDateRange} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -584,12 +615,12 @@ export default function LogsClient({ initialLogs, initialCursor }: LogsClientPro
         )}
 
         {cursor && (
-          <div className="flex justify-center">
+          <div className="flex justify-center mt-6">
             <button
               type="button"
               onClick={handleLoadMore}
               disabled={isLoading}
-              className="flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:shadow-xl disabled:opacity-50"
+              className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:shadow-xl disabled:opacity-50"
             >
               {isLoading ? (
                 <>

@@ -91,9 +91,30 @@ export default function ExpensesClient({
   const currentExpenses = expenses.slice(startIndex, endIndex);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Other Expenses</h1>
+    <div className="min-h-screen">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-400 opacity-10 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-indigo-400 opacity-10 blur-3xl"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto w-full px-4 py-6">
+        {/* Page Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Other Expenses
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Track and manage business expenses</p>
+            </div>
+          </div>
+        </div>
 
         {/* Add Expense Form */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">

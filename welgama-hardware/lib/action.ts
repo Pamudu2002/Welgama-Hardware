@@ -99,6 +99,42 @@ async function logActivity({
   }
 }
 
+export async function toggleUserStatus(userId: number, currentStatus: boolean) {
+  const session = await auth();
+  if (session?.user?.role !== 'Owner') {
+    return { success: false, message: 'Unauthorized: Only Owners can toggle user status.' };
+  }
+  const actor = getActorName(session?.user as SessionActor);
+
+  try {
+    const newStatus = !currentStatus;
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { active: newStatus },
+    });
+
+    await logActivity({
+      userId: session?.user?.id,
+      action: newStatus ? 'staff.activate' : 'staff.deactivate',
+      description: `${actor} ${newStatus ? 'activated' : 'deactivated'} user ${user.username}`,
+      metadata: {
+        affectedUserId: userId,
+        username: user.username,
+        newStatus,
+      },
+    });
+
+    revalidatePath('/cashiers');
+    return { 
+      success: true, 
+      message: `User ${newStatus ? 'activated' : 'deactivated'} successfully!`,
+      newStatus 
+    };
+  } catch (error) {
+    return { success: false, message: 'Failed to update user status.' };
+  }
+}
+
 export async function createCashier(formData: FormData) {
   // 1. SECURITY CHECK: Only Owners can do this
   const session = await auth();
