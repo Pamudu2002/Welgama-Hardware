@@ -7,6 +7,7 @@ import { auth } from '@/auth';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 export async function authenticate(
   prevState: string | undefined, 
@@ -45,12 +46,66 @@ const formatCurrency = (value: number) =>
 
 const canManageInventory = (role?: string | null) => role === 'Owner' || role === 'Cashier';
 
+type SessionActor = {
+  id?: string | number | null;
+  name?: string | null;
+  username?: string | null;
+  role?: string | null;
+};
+
+const normalizeUserId = (userId?: string | number | null) => {
+  if (userId === null || userId === undefined) {
+    return null;
+  }
+
+  if (typeof userId === 'string') {
+    const parsed = parseInt(userId, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return userId;
+};
+
+const getActorName = (user?: SessionActor | null) => {
+  if (!user) return 'Unknown User';
+  if (user.name && user.name.trim().length > 0) return user.name;
+  if (user.username && user.username.trim().length > 0) return user.username;
+  if (user.role) return `${user.role} User`;
+  return 'Unknown User';
+};
+
+async function logActivity({
+  userId,
+  action,
+  description,
+  metadata,
+}: {
+  userId?: string | number | null;
+  action: string;
+  description: string;
+  metadata?: Prisma.JsonValue;
+}) {
+  try {
+    await prisma.activityLog.create({
+      data: {
+        userId: normalizeUserId(userId),
+        action,
+        description,
+        metadata,
+      },
+    });
+  } catch (error) {
+    console.error('Activity log error:', error);
+  }
+}
+
 export async function createCashier(formData: FormData) {
   // 1. SECURITY CHECK: Only Owners can do this
   const session = await auth();
   if (session?.user?.role !== 'Owner') {
     return { message: 'Unauthorized: Only Owners can add cashiers.' };
   }
+  const actor = getActorName(session?.user as SessionActor);
 
   // 2. Validate Input
   const parsed = CreateUserSchema.safeParse({
@@ -69,11 +124,21 @@ export async function createCashier(formData: FormData) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 4. Create the User in DB
-    await prisma.user.create({
+    const newCashier = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
         role: 'Cashier', // Hardcoded because this form is ONLY for cashiers
+      },
+    });
+
+    await logActivity({
+      userId: session?.user?.id,
+      action: 'staff.create',
+      description: `${actor} created cashier account for ${username}`,
+      metadata: {
+        cashierId: newCashier.id,
+        username,
       },
     });
 
@@ -91,10 +156,21 @@ export async function addCategory(name: string) {
   if (session?.user?.role !== 'Owner') {
     return { success: false, message: 'Unauthorized: Only Owners can add categories.' };
   }
+  const actor = getActorName(session?.user as SessionActor);
 
   try {
     const category = await prisma.category.create({
       data: { name },
+    });
+
+    await logActivity({
+      userId: session?.user?.id,
+      action: 'category.create',
+      description: `${actor} created category ${category.name}`,
+      metadata: {
+        categoryId: category.id,
+        name: category.name,
+      },
     });
     
     revalidatePath('/inventory');
@@ -120,6 +196,7 @@ export async function addProduct(formData: FormData) {
   if (!canManageInventory(session?.user?.role)) {
     return { success: false, message: 'Unauthorized: Only authorized staff can add products.' };
   }
+  const actor = getActorName(session?.user as SessionActor);
 
   const parsed = ProductSchema.safeParse({
     name: formData.get('name'),
@@ -153,6 +230,20 @@ export async function addProduct(formData: FormData) {
       },
     });
 
+    await logActivity({
+      userId: session?.user?.id,
+      action: 'product.create',
+      description: `${actor} added ${product.name} to inventory`,
+      metadata: {
+        productName: product.name,
+        category: product.category.name,
+        costPrice: Number(product.costPrice),
+        sellingPrice: Number(product.sellingPrice),
+        quantity: product.quantity,
+        unit: product.unit,
+      },
+    });
+
     revalidatePath('/inventory');
     return { success: true, message: 'Success! Product added to inventory.', product };
   } catch (error) {
@@ -178,6 +269,7 @@ export async function updateProduct(formData: FormData) {
   if (!canManageInventory(session?.user?.role)) {
     return { success: false, message: 'Unauthorized: Only authorized staff can update products.' };
   }
+  const actor = getActorName(session?.user as SessionActor);
 
   const parsed = UpdateProductSchema.safeParse({
     id: formData.get('id'),
@@ -244,6 +336,22 @@ export async function updateProduct(formData: FormData) {
       });
     }
 
+    await logActivity({
+      userId: session?.user?.id,
+      action: 'product.update',
+      description: `${actor} updated ${updatedProduct.name}`,
+      metadata: {
+        productName: updatedProduct.name,
+        category: updatedProduct.category.name,
+        previousQuantity: currentProduct.quantity,
+        newQuantity,
+        quantityChange: newQuantity - currentProduct.quantity,
+        costPrice: Number(updatedProduct.costPrice),
+        sellingPrice: Number(updatedProduct.sellingPrice),
+        reason: reason || null,
+      },
+    });
+
     revalidatePath('/inventory');
     return { success: true, message: 'Product updated successfully!', product: updatedProduct };
   } catch (error) {
@@ -258,10 +366,27 @@ export async function deleteProduct(productId: number) {
   if (!canManageInventory(session?.user?.role)) {
     return { success: false, message: 'Unauthorized: Only authorized staff can delete products.' };
   }
+  const actor = getActorName(session?.user as SessionActor);
 
   try {
-    await prisma.product.delete({
+    const deletedProduct = await prisma.product.delete({
       where: { id: productId },
+      include: {
+        category: true,
+      },
+    });
+
+    await logActivity({
+      userId: session?.user?.id,
+      action: 'product.delete',
+      description: `${actor} removed ${deletedProduct.name} from inventory`,
+      metadata: {
+        productName: deletedProduct.name,
+        category: deletedProduct.category.name,
+        quantity: deletedProduct.quantity,
+        costPrice: Number(deletedProduct.costPrice),
+        sellingPrice: Number(deletedProduct.sellingPrice),
+      },
     });
 
     revalidatePath('/inventory');
@@ -277,6 +402,7 @@ export async function createCustomer(formData: FormData) {
   if (!session) {
     return { success: false, message: 'Unauthorized.' };
   }
+  const actor = getActorName(session.user as SessionActor);
 
   const name = formData.get('name') as string;
   const phone = formData.get('phone') as string;
@@ -292,6 +418,17 @@ export async function createCustomer(formData: FormData) {
         name: name.trim(),
         phone: phone?.trim() || null,
         address: address?.trim() || null,
+      },
+    });
+
+    await logActivity({
+      userId: session.user?.id,
+      action: 'customer.create',
+      description: `${actor} created customer ${customer.name}`,
+      metadata: {
+        customerName: customer.name,
+        phone: customer.phone || '—',
+        address: customer.address || '—',
       },
     });
 
@@ -313,6 +450,7 @@ export async function completeSale(data: {
   if (!session) {
     return { success: false, message: 'Unauthorized.' };
   }
+  const actor = getActorName(session.user as SessionActor);
 
   if (!data.items || data.items.length === 0) {
     return { success: false, message: 'Cart is empty.' };
@@ -364,6 +502,23 @@ export async function completeSale(data: {
       });
     }
 
+    const customer = data.customerId ? await prisma.customer.findUnique({ where: { id: data.customerId }, select: { name: true } }) : null;
+
+    await logActivity({
+      userId: session.user?.id,
+      action: 'sale.complete',
+      description: `${actor} completed sale #${sale.id}${customer ? ` for ${customer.name}` : ''}`,
+      metadata: {
+        saleId: sale.id,
+        customerName: customer?.name || 'Walk-in Customer',
+        totalAmount: Number(totalAmount),
+        amountPaid: Number(amountPaid),
+        changeGiven: Number(changeGiven),
+        deliveryStatus: isDelivered ? 'Delivered' : 'Pending Delivery',
+        itemCount: data.items.length,
+      },
+    });
+
     revalidatePath('/pos');
     revalidatePath('/dashboard');
     revalidatePath('/orders');
@@ -380,6 +535,7 @@ export async function addToBook(data: { customerId: number; items: any[]; isDeli
   if (!session) {
     return { success: false, message: 'Unauthorized.' };
   }
+  const actor = getActorName(session.user as SessionActor);
 
   if (!data.customerId) {
     return { success: false, message: 'Customer is required for credit sale.' };
@@ -441,6 +597,21 @@ export async function addToBook(data: { customerId: number; items: any[]; isDeli
       });
     }
 
+    const customer = await prisma.customer.findUnique({ where: { id: data.customerId }, select: { name: true } });
+
+    await logActivity({
+      userId: session.user?.id,
+      action: 'sale.credit',
+      description: `${actor} added credit sale #${sale.id} to books for ${customer?.name || 'Customer'}`,
+      metadata: {
+        saleId: sale.id,
+        customerName: customer?.name || 'Unknown',
+        totalAmount: Number(totalAmount),
+        itemCount: data.items.length,
+        deliveryStatus: isDelivered ? 'Delivered' : 'Pending Delivery',
+      },
+    });
+
     revalidatePath('/pos');
     revalidatePath('/books');
     return { success: true, message: `Added to book! Amount: ${formatCurrency(totalAmount)}` };
@@ -460,6 +631,7 @@ export async function makePayment(data: {
     if (!session?.user) {
       return { success: false, message: 'Unauthorized' };
     }
+    const actor = getActorName(session.user as SessionActor);
 
     const { customerId, saleIds, amount } = data;
 
@@ -542,6 +714,19 @@ export async function makePayment(data: {
       ? `Payment of ${formatCurrency(appliedAmount)} recorded. Change returned: ${formatCurrency(overpayment)}`
       : `Payment of ${formatCurrency(appliedAmount)} recorded successfully!`;
 
+    await logActivity({
+      userId: session.user.id,
+      action: 'payment.record',
+      description: `${actor} recorded payment of ${formatCurrency(appliedAmount)} for ${customer.name}`,
+      metadata: {
+        customerName: customer.name,
+        amountPaid: Number(appliedAmount),
+        changeReturned: Number(overpayment),
+        remainingBalance: Number(updatedBalance),
+        salesCount: saleIds.length,
+      },
+    });
+
     revalidatePath('/books');
     return { success: true, message, appliedAmount, change: overpayment, remainingBalance: updatedBalance };
   } catch (error) {
@@ -559,12 +744,26 @@ export async function saveDraft(data: {
     if (!session?.user?.id) {
       return { success: false, message: 'Unauthorized' };
     }
+    const actor = getActorName(session.user as SessionActor);
 
     const draft = await prisma.draft.create({
       data: {
         userId: parseInt(session.user.id),
         customerId: data.customerId,
         items: JSON.stringify(data.items),
+      },
+    });
+
+    const customer = data.customerId ? await prisma.customer.findUnique({ where: { id: data.customerId }, select: { name: true } }) : null;
+
+    await logActivity({
+      userId: session.user.id,
+      action: 'draft.create',
+      description: `${actor} saved a draft order${customer ? ` for ${customer.name}` : ''}`,
+      metadata: {
+        draftId: draft.id,
+        customerName: customer?.name || 'Walk-in Customer',
+        itemCount: data.items.length,
       },
     });
 
@@ -582,9 +781,19 @@ export async function deleteDraft(draftId: number) {
     if (!session?.user?.id) {
       return { success: false, message: 'Unauthorized' };
     }
+    const actor = getActorName(session.user as SessionActor);
 
-    await prisma.draft.delete({
+    const draft = await prisma.draft.delete({
       where: { id: draftId },
+    });
+
+    await logActivity({
+      userId: session.user.id,
+      action: 'draft.delete',
+      description: `${actor} deleted draft #${draft.id}`,
+      metadata: {
+        draftId: draft.id,
+      },
     });
 
     revalidatePath('/drafts');
@@ -601,6 +810,7 @@ export async function markAsDelivered(saleId: number) {
     if (!session?.user) {
       return { success: false, message: 'Unauthorized' };
     }
+    const actor = getActorName(session.user as SessionActor);
 
     await prisma.sale.update({
       where: { id: saleId },
@@ -610,10 +820,71 @@ export async function markAsDelivered(saleId: number) {
       },
     });
 
+    await logActivity({
+      userId: session.user.id,
+      action: 'order.delivered',
+      description: `${actor} marked sale #${saleId} as delivered`,
+      metadata: {
+        saleId,
+      },
+    });
+
     revalidatePath('/orders');
     return { success: true, message: 'Order marked as delivered!' };
   } catch (error) {
     console.error('Mark delivered error:', error);
     return { success: false, message: 'Failed to mark as delivered.' };
+  }
+}
+
+export async function addExpense({
+  reason,
+  amount,
+}: {
+  reason: string;
+  amount: number;
+}) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    const userId = normalizeUserId(session.user.id);
+    const actor = getActorName(session.user as SessionActor);
+
+    const expense = await prisma.expense.create({
+      data: {
+        userId,
+        reason,
+        amount,
+      },
+    });
+
+    await logActivity({
+      userId,
+      action: 'expense.create',
+      description: `${actor} added expense: ${reason}`,
+      metadata: {
+        expenseId: expense.id,
+        reason,
+        amount: formatCurrency(Number(expense.amount)),
+      },
+    });
+
+    revalidatePath('/expenses');
+    return {
+      success: true,
+      message: 'Expense added successfully!',
+      expense: {
+        id: expense.id,
+        reason: expense.reason,
+        amount: expense.amount.toString(),
+        createdAt: expense.createdAt.toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Add expense error:', error);
+    return { success: false, message: 'Failed to add expense.' };
   }
 }
