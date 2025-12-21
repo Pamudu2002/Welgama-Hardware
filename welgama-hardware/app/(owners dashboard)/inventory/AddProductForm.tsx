@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { Plus } from 'lucide-react';
 import { addProduct, addCategory } from '@/lib/action';
 
@@ -9,9 +9,21 @@ type Category = {
   name: string;
 };
 
+type Product = {
+  id: number;
+  name: string;
+  categoryId: number;
+  costPrice: number;
+  sellingPrice: number;
+  quantity: number;
+  unit: string;
+  lowStockThreshold: number;
+  category: Category;
+};
+
 type AddProductFormProps = {
   categories: Category[];
-  onSuccess: () => void;
+  onSuccess: (product: Product, message?: string) => void;
 };
 
 const PREDEFINED_UNITS = ['pcs', 'kg', 'g', 'l', 'ml', 'box', 'pack', 'm', 'cm', 'ft'];
@@ -25,6 +37,7 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
   const [newUnitName, setNewUnitName] = useState('');
   const [availableUnits, setAvailableUnits] = useState(PREDEFINED_UNITS);
   const [availableCategories, setAvailableCategories] = useState(categories);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -66,13 +79,14 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
   const handleSubmit = async (formData: FormData) => {
     startTransition(async () => {
       const result = await addProduct(formData);
-      setMessage(result.message);
-      
-      if (result.success) {
+      setMessage(result.message || (result.success ? 'Product added successfully.' : 'Failed to add product.'));
+
+      if (result.success && result.product) {
+        formRef.current?.reset();
         setTimeout(() => {
           setMessage('');
-          onSuccess();
-        }, 1500);
+          onSuccess(result.product, result.message);
+        }, 500);
       }
     });
   };
@@ -87,7 +101,7 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
         </div>
       )}
 
-      <form action={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form ref={formRef} action={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Product Name */}
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">

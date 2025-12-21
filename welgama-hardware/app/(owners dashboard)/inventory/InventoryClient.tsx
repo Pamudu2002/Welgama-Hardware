@@ -1,7 +1,7 @@
 'use client';
 
 import { Package, Search, Plus, Filter, X, Edit2, Trash2, Save, Minus } from 'lucide-react';
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import AddProductForm from './AddProductForm';
 import { deleteProduct, updateProduct } from '@/lib/action';
 import { useAlert } from '@/app/components/AlertProvider';
@@ -52,10 +52,27 @@ export default function InventoryClient({ inventoryItems, categories, session }:
   const [editData, setEditData] = useState<any>({});
   const [isPending, startTransition] = useTransition();
   const itemsPerPage = 10;
+  const [items, setItems] = useState(inventoryItems);
+
+  useEffect(() => {
+    setItems(inventoryItems);
+  }, [inventoryItems]);
+
+  const ensureValidPage = (nextLength: number) => {
+    const totalPages = Math.max(1, Math.ceil(Math.max(nextLength, 1) / itemsPerPage));
+    setCurrentPage(prev => Math.min(prev, totalPages));
+  };
+
+  const handleProductAdded = (product: Product, message?: string) => {
+    setItems(prev => [product, ...prev.filter(item => item.id !== product.id)]);
+    setShowAddForm(false);
+    setCurrentPage(1);
+    showAlert('success', 'Product Added!', message || 'Product added successfully!');
+  };
 
   // Filter and search logic
   const filteredItems = useMemo(() => {
-    let items = inventoryItems.filter(item => {
+    let list = items.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === '' || item.categoryId.toString() === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -64,18 +81,18 @@ export default function InventoryClient({ inventoryItems, categories, session }:
     // Apply sorting
     switch (sortBy) {
       case 'last-added':
-        items.sort((a, b) => b.id - a.id);
+        list.sort((a, b) => b.id - a.id);
         break;
       case 'first-added':
-        items.sort((a, b) => a.id - b.id);
+        list.sort((a, b) => a.id - b.id);
         break;
       case 'alphabetic':
-        items.sort((a, b) => a.name.localeCompare(b.name));
+        list.sort((a, b) => a.name.localeCompare(b.name));
         break;
     }
 
-    return items;
-  }, [inventoryItems, searchTerm, selectedCategory, sortBy]);
+    return list;
+  }, [items, searchTerm, selectedCategory, sortBy]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -145,12 +162,11 @@ export default function InventoryClient({ inventoryItems, categories, session }:
         const result = await updateProduct(formData);
         console.log('Update result:', result);
         
-        if (result.success) {
+        if (result.success && result.product) {
+          setItems(prev => prev.map(item => (item.id === productId ? result.product : item)));
           showAlert('success', 'Product Updated!', result.message || 'Product updated successfully!');
           setEditingId(null);
           setEditData({});
-          // Force page refresh
-          window.location.reload();
         } else {
           showAlert('error', 'Update Failed', result.message || 'Failed to update product.');
         }
@@ -169,7 +185,22 @@ export default function InventoryClient({ inventoryItems, categories, session }:
     if (!confirmed) return;
     
     startTransition(async () => {
-      await deleteProduct(productId);
+      try {
+        const result = await deleteProduct(productId);
+        if (result.success) {
+          setItems(prev => {
+            const next = prev.filter(item => item.id !== productId);
+            ensureValidPage(next.length);
+            return next;
+          });
+          showAlert('success', 'Product Deleted', result.message || 'Product deleted successfully!');
+        } else {
+          showAlert('error', 'Delete Failed', result.message || 'Failed to delete product.');
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        showAlert('error', 'Error', 'An error occurred while deleting the product.');
+      }
     });
   };
 
@@ -228,31 +259,31 @@ export default function InventoryClient({ inventoryItems, categories, session }:
             showAddForm ? 'max-h-[800px] opacity-100 mb-6' : 'max-h-0 opacity-0'
           }`}
         >
-          <AddProductForm categories={categories} onSuccess={() => setShowAddForm(false)} />
+          <AddProductForm categories={categories} onSuccess={handleProductAdded} />
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Total Products</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{inventoryItems.length}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-2">{items.length}</p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Total Cost</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {formatCurrency(inventoryItems.reduce((acc, item) => acc + (Number(item.costPrice) * item.quantity), 0))}
+              {formatCurrency(items.reduce((acc, item) => acc + (Number(item.costPrice) * item.quantity), 0))}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Total Selling Price</p>
             <p className="text-3xl font-bold text-green-600 mt-2">
-              {formatCurrency(inventoryItems.reduce((acc, item) => acc + (Number(item.sellingPrice) * item.quantity), 0))}
+              {formatCurrency(items.reduce((acc, item) => acc + (Number(item.sellingPrice) * item.quantity), 0))}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Low Stock</p>
             <p className="text-3xl font-bold text-red-600 mt-2">
-              {inventoryItems.filter(item => item.quantity < item.lowStockThreshold).length}
+              {items.filter(item => item.quantity < item.lowStockThreshold).length}
             </p>
           </div>
         </div>

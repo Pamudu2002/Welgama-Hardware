@@ -43,6 +43,8 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+const canManageInventory = (role?: string | null) => role === 'Owner' || role === 'Cashier';
+
 export async function createCashier(formData: FormData) {
   // 1. SECURITY CHECK: Only Owners can do this
   const session = await auth();
@@ -115,8 +117,8 @@ const ProductSchema = z.object({
 
 export async function addProduct(formData: FormData) {
   const session = await auth();
-  if (session?.user?.role !== 'Owner') {
-    return { success: false, message: 'Unauthorized: Only Owners can add products.' };
+  if (!canManageInventory(session?.user?.role)) {
+    return { success: false, message: 'Unauthorized: Only authorized staff can add products.' };
   }
 
   const parsed = ProductSchema.safeParse({
@@ -136,7 +138,7 @@ export async function addProduct(formData: FormData) {
   const { name, categoryId, costPrice, sellingPrice, quantity, unit, lowStockThreshold } = parsed.data;
 
   try {
-    await prisma.product.create({
+    const product = await prisma.product.create({
       data: {
         name,
         categoryId: parseInt(categoryId),
@@ -146,10 +148,13 @@ export async function addProduct(formData: FormData) {
         unit,
         lowStockThreshold: parseInt(lowStockThreshold),
       },
+      include: {
+        category: true,
+      },
     });
 
     revalidatePath('/inventory');
-    return { success: true, message: 'Success! Product added to inventory.' };
+    return { success: true, message: 'Success! Product added to inventory.', product };
   } catch (error) {
     return { success: false, message: 'Database Error: Failed to add product.' };
   }
@@ -170,8 +175,8 @@ const UpdateProductSchema = z.object({
 
 export async function updateProduct(formData: FormData) {
   const session = await auth();
-  if (session?.user?.role !== 'Owner') {
-    return { success: false, message: 'Unauthorized: Only Owners can update products.' };
+  if (!canManageInventory(session?.user?.role)) {
+    return { success: false, message: 'Unauthorized: Only authorized staff can update products.' };
   }
 
   const parsed = UpdateProductSchema.safeParse({
@@ -208,7 +213,7 @@ export async function updateProduct(formData: FormData) {
     const quantityChanged = newQuantity !== currentProduct.quantity;
 
     // Update product
-    await prisma.product.update({
+    const updatedProduct = await prisma.product.update({
       where: { id: parseInt(id) },
       data: {
         name,
@@ -218,6 +223,9 @@ export async function updateProduct(formData: FormData) {
         quantity: newQuantity,
         unit,
         lowStockThreshold: parseInt(lowStockThreshold),
+      },
+      include: {
+        category: true,
       },
     });
 
@@ -237,7 +245,7 @@ export async function updateProduct(formData: FormData) {
     }
 
     revalidatePath('/inventory');
-    return { success: true, message: 'Product updated successfully!' };
+    return { success: true, message: 'Product updated successfully!', product: updatedProduct };
   } catch (error) {
     console.error('Update error:', error);
     return { success: false, message: `Database Error: ${error instanceof Error ? error.message : 'Failed to update product.'}` };
@@ -247,8 +255,8 @@ export async function updateProduct(formData: FormData) {
 // Delete a product
 export async function deleteProduct(productId: number) {
   const session = await auth();
-  if (session?.user?.role !== 'Owner') {
-    return { success: false, message: 'Unauthorized: Only Owners can delete products.' };
+  if (!canManageInventory(session?.user?.role)) {
+    return { success: false, message: 'Unauthorized: Only authorized staff can delete products.' };
   }
 
   try {
@@ -257,7 +265,7 @@ export async function deleteProduct(productId: number) {
     });
 
     revalidatePath('/inventory');
-    return { success: true, message: 'Success! Product deleted.' };
+    return { success: true, message: 'Success! Product deleted.', productId };
   } catch (error) {
     return { success: false, message: 'Database Error: Failed to delete product. It might be linked to sales.' };
   }
