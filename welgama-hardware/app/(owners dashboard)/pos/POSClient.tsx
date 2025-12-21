@@ -50,6 +50,8 @@ const formatCurrency = (value: number) =>
 export default function POSClient({ products, customers: initialCustomers, session }: POSClientProps) {
   const { showAlert } = useAlert();
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<number | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -101,14 +103,41 @@ export default function POSClient({ products, customers: initialCustomers, sessi
     }
   }, []);
 
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm) return [];
-    return products.filter(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.id.toString() === searchTerm
-    ).slice(0, 10);
-  }, [products, searchTerm]);
+  // Fetch products from API when search term changes
+  useEffect(() => {
+    const searchProducts = async () => {
+      if (!searchTerm.trim()) {
+        setSearchResults([]);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const params = new URLSearchParams({
+          search: searchTerm.trim(),
+          limit: '10',
+        });
+
+        const response = await fetch(`/api/inventory?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSearchResults(data.data || []);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (error) {
+        console.error('Failed to search products:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    searchProducts();
+  }, [searchTerm]);
+
+  // Use search results instead of client-side filtering
+  const filteredProducts = searchResults;
 
   // Calculate subtotal for add form
   const formSubtotal = useMemo(() => {

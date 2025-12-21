@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const totalCount = await prisma.product.count({ where });
 
     // Fetch all products matching search/category filters
-    const allProducts = await prisma.product.findMany({
+    let allProducts = await prisma.product.findMany({
       where,
       include: {
         category: {
@@ -50,6 +50,14 @@ export async function GET(request: NextRequest) {
       },
       orderBy: sortBy === 'first-added' ? { id: 'asc' } : sortBy === 'alphabetic' ? { name: 'asc' } : { id: 'desc' },
     });
+
+    // Prioritize products that start with the search term
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const startsWithSearch = allProducts.filter(p => p.name.toLowerCase().startsWith(searchLower));
+      const containsSearch = allProducts.filter(p => !p.name.toLowerCase().startsWith(searchLower));
+      allProducts = [...startsWithSearch, ...containsSearch];
+    }
 
     // Apply low stock filter in-memory (since it requires comparing quantity with lowStockThreshold)
     let filteredProducts = allProducts;
