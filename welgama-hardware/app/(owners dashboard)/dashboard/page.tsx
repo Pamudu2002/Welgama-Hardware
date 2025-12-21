@@ -1,13 +1,9 @@
 // app/(dashboard)/dashboard/page.tsx
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, DollarSign, ShoppingCart, Package, Users, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
-
-const formatCurrency = (value: number) =>
-  `Rs.${value.toLocaleString('en-LK', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+import { BarChart3 } from 'lucide-react';
+import { prisma } from '@/lib/db';
+import DashboardClient from './DashboardClient';
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -16,49 +12,142 @@ export default async function DashboardPage() {
     redirect('/pos');
   }
 
-  // Mock dashboard data
-  const stats = [
-    { 
-      title: "Today's Revenue", 
-      value: formatCurrency(0), 
-      change: '+0%', 
-      trending: 'up',
-      icon: DollarSign,
-      bgColor: 'bg-green-100',
-      iconColor: 'text-green-600'
-    },
-    { 
-      title: 'Total Sales', 
-      value: '0', 
-      change: '+0%', 
-      trending: 'up',
-      icon: ShoppingCart,
-      bgColor: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    { 
-      title: 'Products in Stock', 
-      value: '0', 
-      change: '-0%', 
-      trending: 'down',
-      icon: Package,
-      bgColor: 'bg-indigo-100',
-      iconColor: 'text-indigo-600'
-    },
-    { 
-      title: 'Active Staff', 
-      value: '0', 
-      change: '+0%', 
-      trending: 'up',
-      icon: Users,
-      bgColor: 'bg-purple-100',
-      iconColor: 'text-purple-600'
-    },
-  ];
+  // Get today's date range
+  const today = new Date();
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
 
-  const recentTransactions = [
-    { id: 1, customer: 'Walk-in Customer', amount: 0, items: 0, date: 'No transactions yet' },
-  ];
+  // Fetch today's sales
+  const todaySales = await prisma.sale.findMany({
+    where: {
+      date: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    include: {
+      items: {
+        include: {
+          product: true,
+        },
+      },
+    },
+  });
+
+  // Fetch today's expenses
+  const todayExpenses = await prisma.expense.findMany({
+    where: {
+      createdAt: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+  });
+
+  // Calculate today's stats
+  const totalRevenue = todaySales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
+  const totalExpenses = todayExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  
+  // Calculate total cost of goods sold
+  const totalCost = todaySales.reduce((sum, sale) => {
+    const saleCost = sale.items.reduce((itemSum, item) => {
+      return itemSum + (Number(item.product.costPrice) * item.quantity);
+    }, 0);
+    return sum + saleCost;
+  }, 0);
+
+  const totalProfit = totalRevenue - totalCost;
+  
+  // Count credit sales (pending payments)
+  const creditSalesCount = todaySales.filter(sale => 
+    sale.paymentStatus === 'Pending' || sale.paymentStatus === 'Credit'
+  ).length;
+
+  // Get last 7 days data for charts
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return date;
+  });
+
+  const chartData = await Promise.all(
+    last7Days.map(async (date) => {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const daySales = await prisma.sale.findMany({
+        where: {
+          date: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
+
+      const dayExpenses = await prisma.expense.findMany({
+        where: {
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+      });
+
+      const revenue = daySales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
+      const expenses = dayExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+      
+      // Calculate cost of goods sold for the day
+      const dayCost = daySales.reduce((sum, sale) => {
+        const saleCost = sale.items.reduce((itemSum, item) => {
+          return itemSum + (Number(item.product.costPrice) * item.quantity);
+        }, 0);
+        return sum + saleCost;
+      }, 0);
+      
+      const profit = revenue - dayCost;
+
+      return {
+        label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue,
+        sales: daySales.length,
+        expenses,
+        profit,
+      };
+    })
+  );
+
+  // Get low stock products
+  const lowStockProducts = await prisma.product.findMany({
+    where: {
+      quantity: {
+        lte: prisma.product.fields.lowStockThreshold,
+      },
+    },
+    orderBy: {
+      quantity: 'asc',
+    },
+    take: 10,
+  });
+
+  // Get total products and active staff
+  const totalProducts = await prisma.product.count();
+  const activeStaff = await prisma.user.count({
+    where: {
+      role: 'Cashier',
+      active: true,
+    },
+  });
 
   return (
     <div className="min-h-screen">
@@ -68,110 +157,42 @@ export default async function DashboardPage() {
         <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-indigo-400 opacity-10 blur-3xl"></div>
       </div>
 
-      <div className="relative max-w-7xl mx-auto">
+      <div className="relative max-w-7xl mx-auto w-full px-4 py-6">
         {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
-              <BarChart3 className="h-8 w-8 text-white" />
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Owner Dashboard
               </h1>
-              <p className="text-gray-600 mt-1">Welcome back, {session?.user?.name || 'Owner'}!</p>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Welcome back, {session?.user?.name || session?.user?.username || 'Owner'}!</p>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            const TrendIcon = stat.trending === 'up' ? TrendingUp : TrendingDown;
-            
-            return (
-              <div key={index} className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 hover:shadow-2xl transition-all duration-200">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.iconColor}`} />
-                  </div>
-                  <div className={`flex items-center gap-1 text-xs font-medium ${
-                    stat.trending === 'up' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    <TrendIcon className="h-3 w-3" />
-                    {stat.change}
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Charts and Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Sales Chart */}
-          <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Sales Overview</h2>
-            <div className="h-64 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <TrendingUp className="h-16 w-16 mx-auto mb-3 text-gray-300" />
-                <p className="text-lg font-medium">Sales Chart Coming Soon</p>
-                <p className="text-sm mt-2">Track your daily, weekly, and monthly sales</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <a href="/pos" className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
-                <ShoppingCart className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-gray-900">New Sale</span>
-              </a>
-              <a href="/inventory" className="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">
-                <Package className="h-5 w-5 text-indigo-600" />
-                <span className="font-medium text-gray-900">Manage Inventory</span>
-              </a>
-              <a href="/cashiers" className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
-                <Users className="h-5 w-5 text-purple-600" />
-                <span className="font-medium text-gray-900">Manage Staff</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Transactions */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Recent Transactions</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-blue-50 to-indigo-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Items</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {recentTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">{transaction.customer}</td>
-                    <td className="px-6 py-4 text-gray-600">{transaction.items}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{formatCurrency(transaction.amount)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{transaction.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DashboardClient
+          initialStats={{
+            totalRevenue,
+            totalSales: todaySales.length,
+            totalProfit,
+            totalExpenses,
+            salesCount: todaySales.length,
+            creditSalesCount,
+          }}
+          lowStockProducts={lowStockProducts}
+          chartData={{
+            labels: chartData.map((d) => d.label),
+            revenue: chartData.map((d) => d.revenue),
+            sales: chartData.map((d) => d.sales),
+            expenses: chartData.map((d) => d.expenses),
+            profit: chartData.map((d) => d.profit),
+          }}
+          totalProducts={totalProducts}
+          activeStaff={activeStaff}
+        />
 
         {/* Footer Info */}
         <div className="mt-8 text-center">
