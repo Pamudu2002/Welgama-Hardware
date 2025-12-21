@@ -374,9 +374,11 @@ function DateRangeCalendar({ value, onChange }: { value: DateRange; onChange: (r
 type LogsClientProps = {
   initialLogs: ActivityLogEntry[];
   initialCursor: number | null;
+  totalEventsCount: number;
+  activeUsersCount: number;
 };
 
-export default function LogsClient({ initialLogs, initialCursor }: LogsClientProps) {
+export default function LogsClient({ initialLogs, initialCursor, totalEventsCount, activeUsersCount }: LogsClientProps) {
   const [logs, setLogs] = useState<ActivityLogEntry[]>(initialLogs);
   const [cursor, setCursor] = useState<number | null>(initialCursor);
   const [isLoading, setIsLoading] = useState(false);
@@ -440,8 +442,6 @@ export default function LogsClient({ initialLogs, initialCursor }: LogsClientPro
   }, [dateRange.start, dateRange.end]);
   const hasDateRange = Boolean(dateRange.start && dateRange.end);
 
-  const actorCount = useMemo(() => new Set(logs.map((log) => log.user?.username || log.user?.role || 'Unknown')).size, [logs]);
-
   const handleLoadMore = async () => {
     if (!cursor) return;
 
@@ -502,11 +502,11 @@ export default function LogsClient({ initialLogs, initialCursor }: LogsClientPro
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Events</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{logs.length}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{totalEventsCount.toLocaleString()}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Active Users</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{actorCount}</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">{activeUsersCount}</p>
             </div>
           </div>
         </div>

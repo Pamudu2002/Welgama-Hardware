@@ -5,6 +5,7 @@ import { Receipt, Printer, X, CheckCircle, Clock, CreditCard, Filter, Eye, Searc
 import { markAsDelivered } from '@/lib/action';
 import { useAlert } from '@/app/components/AlertProvider';
 import { ButtonLoader, Spinner } from '@/app/components/Loading';
+import { PaginationControls } from '@/app/components/PaginationControls';
 
 type OrderItem = {
   id: number;
@@ -43,7 +44,7 @@ type Sale = {
 };
 
 type OrdersClientProps = {
-  sales: Sale[];
+  session: any;
 };
 
 type DateRange = {
@@ -233,24 +234,74 @@ function DateRangeCalendar({ value, onChange }: { value: DateRange; onChange: (r
   );
 }
 
-export default function OrdersClient({ sales }: OrdersClientProps) {
+export default function OrdersClient({ session }: OrdersClientProps) {
   const { showAlert, showConfirm } = useAlert();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isPending, startTransition] = useTransition();
-  const [saleData, setSaleData] = useState<Sale[]>(sales);
+  const [saleData, setSaleData] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>({ start: null, end: null });
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isLoadingSales, setIsLoadingSales] = useState(false);
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const calendarButtonRef = useRef<HTMLButtonElement | null>(null);
-  const itemsPerPage = 10;
+  const tableRef = useRef<HTMLDivElement>(null);
+  const prevLoadingRef = useRef(false);
+  const shouldScrollRef = useRef(false);
+  const prevPageRef = useRef(1);
 
+  // Fetch sales from API with pagination
   useEffect(() => {
-    setSaleData(sales);
-  }, [sales]);
+    const fetchSales = async () => {
+      setIsLoadingSales(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: '20',
+        });
+
+        // Add search filter
+        if (searchTerm.trim()) {
+          params.append('search', searchTerm.trim());
+        }
+
+        // Add date range filter
+        if (dateRange.start) {
+          params.append('startDate', dateRange.start.toISOString());
+        }
+        if (dateRange.end) {
+          params.append('endDate', dateRange.end.toISOString());
+        }
+
+        // Map frontend filter to API parameters
+        if (statusFilter === 'pending_delivery') {
+          params.append('isDelivered', 'false');
+        } else if (statusFilter === 'pending_payment') {
+          params.append('paymentStatus', 'Credit');
+        } else if (statusFilter === 'completed') {
+          params.append('isDelivered', 'true');
+        }
+
+        const response = await fetch(`/api/orders?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSaleData(data.data);
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
+        showAlert('error', 'Failed to load orders');
+      } finally {
+        setIsLoadingSales(false);
+      }
+    };
+
+    fetchSales();
+  }, [currentPage, statusFilter, searchTerm, dateRange.start, dateRange.end]);
 
   useEffect(() => {
     if (!isCalendarOpen) return;
@@ -276,54 +327,31 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
     }
   }, [dateRange.start, dateRange.end]);
 
-  // Filter sales by status
-  const filteredSales = useMemo(() => {
-    let result = saleData;
+  // Data is already filtered and paginated by the API
+  const paginatedSales = saleData;
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      result = result.filter((sale) =>
-        sale.customer?.name?.toLowerCase().includes(term)
-      );
-    }
-
-    if (dateRange.start || dateRange.end) {
-      const startDate = dateRange.start ? new Date(dateRange.start) : null;
-      const endDate = dateRange.end ? new Date(dateRange.end) : null;
-      if (startDate) startDate.setHours(0, 0, 0, 0);
-      if (endDate) endDate.setHours(23, 59, 59, 999);
-
-      result = result.filter((sale) => {
-        const saleDate = new Date(sale.date);
-        if (startDate && saleDate < startDate) return false;
-        if (endDate && saleDate > endDate) return false;
-        return true;
-      });
-    }
-
-    if (statusFilter === 'pending_delivery') {
-      return result.filter((sale) => !sale.isDelivered);
-    }
-    if (statusFilter === 'pending_payment') {
-      return result.filter((sale) => sale.paymentStatus !== 'Paid');
-    }
-    if (statusFilter === 'completed') {
-      return result.filter((sale) => sale.isDelivered);
-    }
-    return result;
-  }, [saleData, statusFilter, searchTerm, dateRange.start, dateRange.end]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
-  const paginatedSales = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredSales.slice(start, start + itemsPerPage);
-  }, [filteredSales, currentPage]);
-
-  // Reset to page 1 when filter changes
+  // Reset to page 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, searchTerm, dateRange.start, dateRange.end]);
+
+  // Track page changes
+  useEffect(() => {
+    if (prevPageRef.current !== currentPage) {
+      shouldScrollRef.current = true;
+      prevPageRef.current = currentPage;
+    }
+  }, [currentPage]);
+
+  // Scroll to top of table when page changes (after data loads)
+  useEffect(() => {
+    // Scroll when loading changes from true to false AND we should scroll
+    if (prevLoadingRef.current && !isLoadingSales && shouldScrollRef.current && tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      shouldScrollRef.current = false;
+    }
+    prevLoadingRef.current = isLoadingSales;
+  }, [isLoadingSales]);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -391,6 +419,14 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
       return 'Pending Payment';
     }
     return formatStatus(paymentStatus);
+  };
+
+  const handleSearchInputChange = (value: string) => {
+    // Trigger loading state immediately so table shows refresh animation while typing/backspacing
+    if (!isLoadingSales) {
+      setIsLoadingSales(true);
+    }
+    setSearchTerm(value);
   };
 
   const dateRangeLabel = useMemo(() => {
@@ -490,7 +526,7 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
                 placeholder="Search by customer name"
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -535,7 +571,16 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 overflow-hidden">
+        <div ref={tableRef} className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 overflow-hidden relative">
+          {/* Loading Overlay */}
+          {isLoadingSales && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <p className="text-sm text-gray-600 font-medium">Loading orders...</p>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
@@ -607,43 +652,15 @@ export default function OrdersClient({ sales }: OrdersClientProps) {
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <p className="text-sm text-gray-600">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSales.length)} of {filteredSales.length} orders
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-4 py-2 rounded-lg ${
-                        currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
+          {/* Pagination - Keep visible during loading */}
+          {totalPages > 0 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                isLoading={isLoadingSales}
+              />
             </div>
           )}
         </div>

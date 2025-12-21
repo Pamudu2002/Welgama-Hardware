@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { addExpense } from '@/lib/action';
+import { PaginationControls } from '@/app/components/PaginationControls';
 
 interface ExpenseData {
   id: string;
@@ -15,25 +16,94 @@ interface ExpenseData {
 }
 
 interface ExpensesClientProps {
-  initialExpenses: ExpenseData[];
-  totalAmount: number;
-  currentUser: {
-    username: string;
-    role: string;
-  };
+  session: any;
 }
 
-export default function ExpensesClient({
-  initialExpenses,
-  totalAmount: initialTotal,
-  currentUser,
-}: ExpensesClientProps) {
-  const [expenses, setExpenses] = useState<ExpenseData[]>(initialExpenses);
+export default function ExpensesClient({ session }: ExpensesClientProps) {
+  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
   const [reason, setReason] = useState('');
   const [amount, setAmount] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalAmount, setTotalAmount] = useState(initialTotal);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const prevLoadingRef = useRef(false);
+  const shouldScrollRef = useRef(false);
+  const prevPageRef = useRef(1);
+
+  // Fetch expenses from API
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      setIsLoadingExpenses(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: '20',
+        });
+
+        const response = await fetch(`/api/expenses?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setExpenses(
+            data.data.map((exp: any) => ({
+              id: String(exp.id),
+              reason: exp.reason,
+              amount: Number(exp.amount),
+              createdAt: exp.createdAt,
+              user: {
+                username: exp.user.username,
+                role: exp.user.role,
+              },
+            }))
+          );
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch expenses:', error);
+      } finally {
+        setIsLoadingExpenses(false);
+      }
+    };
+
+    fetchExpenses();
+  }, [currentPage]);
+
+  // Fetch total amount
+  useEffect(() => {
+    const fetchTotal = async () => {
+      try {
+        const response = await fetch('/api/expenses/total');
+        if (response.ok) {
+          const data = await response.json();
+          setTotalAmount(data.total);
+        }
+      } catch (error) {
+        console.error('Failed to fetch total:', error);
+      }
+    };
+
+    fetchTotal();
+  }, []);
+
+  // Track page changes
+  useEffect(() => {
+    if (prevPageRef.current !== currentPage) {
+      shouldScrollRef.current = true;
+      prevPageRef.current = currentPage;
+    }
+  }, [currentPage]);
+
+  // Scroll to top of table when page changes (after data loads)
+  useEffect(() => {
+    // Scroll when loading changes from true to false AND we should scroll
+    if (prevLoadingRef.current && !isLoadingExpenses && shouldScrollRef.current && tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      shouldScrollRef.current = false;
+    }
+    prevLoadingRef.current = isLoadingExpenses;
+  }, [isLoadingExpenses]);
 
   const formatCurrency = (value: number) => {
     return `Rs. ${value.toLocaleString('en-LK', {
@@ -64,15 +134,21 @@ export default function ExpensesClient({
           amount: Number(result.expense.amount),
           createdAt: result.expense.createdAt,
           user: {
-            username: currentUser.username,
-            role: currentUser.role,
+            username: session?.user?.name || 'Unknown',
+            role: 'owner',
           },
         };
 
+        // Add to top of list and update total
         setExpenses([newExpense, ...expenses]);
         setTotalAmount(totalAmount + newExpense.amount);
         setReason('');
         setAmount('');
+        
+        // Go to first page to see the new expense
+        if (currentPage !== 1) {
+          setCurrentPage(1);
+        }
       } else {
         alert(result.message || 'Failed to add expense');
       }
@@ -84,11 +160,7 @@ export default function ExpensesClient({
     }
   };
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(expenses.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentExpenses = expenses.slice(startIndex, endIndex);
+  const currentExpenses = expenses;
 
   return (
     <div className="min-h-screen">
@@ -169,7 +241,16 @@ export default function ExpensesClient({
       </div>
 
       {/* Expenses Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div ref={tableRef} className="bg-white rounded-lg shadow-md overflow-hidden relative">
+        {/* Loading Overlay */}
+        {isLoadingExpenses && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="text-sm text-gray-600 font-medium">Loading expenses...</p>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -229,32 +310,14 @@ export default function ExpensesClient({
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-            <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to {Math.min(endIndex, expenses.length)} of {expenses.length} expenses
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="px-4 py-2 text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            isLoading={isLoadingExpenses}
+          />
+        </div>
       </div>
       </div>
     </div>

@@ -13,6 +13,7 @@ export default async function LogsPage() {
     redirect('/pos');
   }
 
+  // Fetch initial logs
   const logs = await prisma.activityLog.findMany({
     take: PAGE_SIZE,
     orderBy: { createdAt: 'desc' },
@@ -27,6 +28,18 @@ export default async function LogsPage() {
     },
   });
 
+  // Get total count of all logs
+  const totalCount = await prisma.activityLog.count();
+
+  // Get unique users count
+  const uniqueUsers = await prisma.activityLog.findMany({
+    distinct: ['userId'],
+    select: {
+      userId: true,
+    },
+  });
+  const activeUsersCount = uniqueUsers.length;
+
   const serialized: ActivityLogEntry[] = logs.map((log) => ({
     id: log.id,
     action: log.action,
@@ -39,6 +52,11 @@ export default async function LogsPage() {
   const nextCursor = logs.length === PAGE_SIZE ? logs[logs.length - 1].id : null;
 
   return (
-    <LogsClient initialLogs={serialized} initialCursor={nextCursor} />
+    <LogsClient 
+      initialLogs={serialized} 
+      initialCursor={nextCursor}
+      totalEventsCount={totalCount}
+      activeUsersCount={activeUsersCount}
+    />
   );
 }

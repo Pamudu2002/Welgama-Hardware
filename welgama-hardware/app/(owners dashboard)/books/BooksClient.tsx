@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useTransition, useEffect } from 'react';
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react';
 import { BookOpen, Search, DollarSign, Calendar, CheckCircle } from 'lucide-react';
 import { makePayment } from '@/lib/action';
 import { useAlert } from '@/app/components/AlertProvider';
 import { ButtonLoader, Spinner } from '@/app/components/Loading';
+import { PaginationControls } from '@/app/components/PaginationControls';
 
 type Customer = {
   id: number;
@@ -31,7 +32,6 @@ type CreditSale = {
     subtotal: any;
     product: {
       name: string;
-      unit: string;
     };
   }[];
   payments: {
@@ -43,7 +43,6 @@ type CreditSale = {
 
 type BooksClientProps = {
   customers: Customer[];
-  creditSales: CreditSale[];
   session: any;
 };
 
@@ -53,7 +52,7 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-export default function BooksClient({ customers, creditSales, session }: BooksClientProps) {
+export default function BooksClient({ customers, session }: BooksClientProps) {
   const { showAlert } = useAlert();
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -61,15 +60,70 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isPending, startTransition] = useTransition();
   const [customerData, setCustomerData] = useState(customers);
-  const [salesData, setSalesData] = useState(creditSales);
+  const [salesData, setSalesData] = useState<CreditSale[]>([]);
+  const [isLoadingSales, setIsLoadingSales] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const salesRef = useRef<HTMLDivElement>(null);
+  const prevLoadingRef = useRef(false);
+  const shouldScrollRef = useRef(false);
+  const prevPageRef = useRef(1);
 
   useEffect(() => {
     setCustomerData(customers);
   }, [customers]);
 
+  // Fetch credit sales with pagination
   useEffect(() => {
-    setSalesData(creditSales);
-  }, [creditSales]);
+    const fetchSales = async () => {
+      setIsLoadingSales(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: '20',
+          ...(searchTerm && { search: searchTerm }),
+        });
+
+        const response = await fetch(`/api/books?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSalesData(data.data);
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch sales:', error);
+        showAlert('error', 'Failed to load credit sales');
+      } finally {
+        setIsLoadingSales(false);
+      }
+    };
+
+    fetchSales();
+  }, [currentPage, searchTerm]);
+
+  // Track page changes
+  useEffect(() => {
+    if (prevPageRef.current !== currentPage) {
+      shouldScrollRef.current = true;
+      prevPageRef.current = currentPage;
+    }
+  }, [currentPage]);
+
+  // Scroll to top of sales list when page changes (after data loads)
+  useEffect(() => {
+    // Scroll when loading changes from true to false AND we should scroll
+    if (prevLoadingRef.current && !isLoadingSales && shouldScrollRef.current && salesRef.current) {
+      salesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      shouldScrollRef.current = false;
+    }
+    prevLoadingRef.current = isLoadingSales;
+  }, [isLoadingSales]);
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page on new search
+  };
 
   // Filter customers by search
   const filteredCustomers = useMemo(() => {
@@ -325,26 +379,54 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
 
           {/* Right: Credit Sales List */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Credit Sales</h2>
-                {customerSales.length > 0 && (
-                  <button
-                    onClick={selectAll}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Select All Unpaid
-                  </button>
-                )}
-              </div>
+            <div ref={salesRef} className="bg-white rounded-2xl shadow-xl overflow-hidden relative">
+              {/* Loading Overlay */}
+              {isLoadingSales && (
+                <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <p className="text-sm text-gray-600 font-medium">Loading credit sales...</p>
+                  </div>
+                </div>
+              )}
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Credit Sales</h2>
+                  {customerSales.length > 0 && (
+                    <button
+                      onClick={selectAll}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Select All Unpaid
+                    </button>
+                  )}
+                </div>
 
-              {!selectedCustomerId ? (
-                <p className="text-gray-500 text-center py-8">Please select a customer to view their credit sales</p>
-              ) : customerSales.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No credit sales found for this customer</p>
-              ) : (
-                <div className="space-y-4">
-                  {customerSales.map((sale) => {
+                {/* Search bar */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by customer name or phone..."
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {isLoadingSales ? (
+                  <div className="flex justify-center py-12">
+                    <Spinner className="h-8 w-8 text-blue-600" />
+                  </div>
+                ) : !selectedCustomerId ? (
+                  <p className="text-gray-500 text-center py-8">Please select a customer to view their credit sales</p>
+                ) : customerSales.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No credit sales found for this customer</p>
+                ) : (
+                  <div className="space-y-4">
+                    {customerSales.map((sale) => {
                     const totalPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
                     const amountDue = Number(sale.totalAmount) - totalPaid;
                     const isFullyPaid = amountDue <= 0;
@@ -419,6 +501,17 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                     );
                   })}
                 </div>
+              )}
+              </div>
+
+              {/* Pagination Controls */}
+              {!isLoadingSales && salesData.length > 0 && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  isLoading={isLoadingSales}
+                />
               )}
             </div>
           </div>
