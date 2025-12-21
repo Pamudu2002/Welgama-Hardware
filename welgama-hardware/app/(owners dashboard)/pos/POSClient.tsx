@@ -10,6 +10,7 @@ type Product = {
   id: number;
   name: string;
   sellingPrice: number;
+  costPrice: number;
   quantity: number;
   unit: string;
 };
@@ -25,6 +26,7 @@ type CartItem = {
   productId: number;
   productName: string;
   originalPrice: number;
+  costPrice: number;
   price: number;
   quantity: number;
   unit: string;
@@ -144,6 +146,7 @@ export default function POSClient({ products, customers: initialCustomers, sessi
       productId: addItemForm.product.id,
       productName: addItemForm.product.name,
       originalPrice: addItemForm.product.sellingPrice,
+      costPrice: addItemForm.product.costPrice,
       price: addItemForm.price,
       quantity: addItemForm.quantity,
       unit: addItemForm.product.unit,
