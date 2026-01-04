@@ -348,6 +348,7 @@ export default function POSClient({ products, session }: POSClientProps) {
         showAlert('success', 'Sale Completed!', result.message);
         setCart([]);
         setSelectedCustomer(null);
+        setSelectedCustomerInfo(null);
         setAmountPaid('');
         setIsDelivered(true);
         setLoadedDraftId(null);
@@ -384,6 +385,7 @@ export default function POSClient({ products, session }: POSClientProps) {
         showAlert('success', 'Added to Book!', result.message);
         setCart([]);
         setSelectedCustomer(null);
+        setSelectedCustomerInfo(null);
         setAmountPaid('');
         setIsDelivered(true);
         setLoadedDraftId(null);
@@ -451,6 +453,7 @@ export default function POSClient({ products, session }: POSClientProps) {
         showAlert('success', 'Draft Saved!', result.message);
         setCart([]);
         setSelectedCustomer(null);
+        setSelectedCustomerInfo(null);
         setLoadedDraftId(null);
       } else {
         showAlert('error', 'Failed', result.message);
