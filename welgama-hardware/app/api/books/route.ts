@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Build where clause for search
     const where = {
       paymentStatus: {
-        in: ['Credit', 'Pending'],
+        in: ['Credit', 'Pending', 'Partial'],
       },
       ...(search && {
         OR: [
