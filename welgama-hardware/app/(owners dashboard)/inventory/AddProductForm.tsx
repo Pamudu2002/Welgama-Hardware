@@ -18,8 +18,8 @@ type Product = {
   id: number;
   name: string;
   categoryId: number;
-  costPrice: number;
-  sellingPrice: number;
+  costPrice: any;
+  sellingPrice: any;
   quantity: number;
   unit: string;
   lowStockThreshold: number;
