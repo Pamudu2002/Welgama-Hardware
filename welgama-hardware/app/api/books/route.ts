@@ -57,8 +57,16 @@ export async function GET(request: NextRequest) {
             product: {
               select: {
                 name: true,
+                unit: true,
               },
             },
+          },
+        },
+        payments: {
+          select: {
+            id: true,
+            amount: true,
+            date: true,
           },
         },
       },

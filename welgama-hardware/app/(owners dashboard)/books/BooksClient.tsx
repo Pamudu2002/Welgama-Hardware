@@ -581,14 +581,18 @@ export default function BooksClient({ session }: BooksClientProps) {
                             {/* Items */}
                             <div className="bg-gray-50 rounded p-3 mb-2">
                               <p className="text-xs font-semibold text-gray-700 mb-2">Items:</p>
-                              {sale.items.map((item, idx) => (
-                                <div key={idx} className="text-xs text-gray-600 flex justify-between">
-                                  <span>
-                                    {item.product.name} x {item.quantity} {item.product.unit}
-                                  </span>
-                                  <span>{formatCurrency(Number(item.subtotal))}</span>
-                                </div>
-                              ))}
+                              {sale.items && sale.items.length > 0 ? (
+                                sale.items.map((item, idx) => (
+                                  <div key={idx} className="text-xs text-gray-600 flex justify-between">
+                                    <span>
+                                      {item.product.name} x {item.quantity} {item.product.unit}
+                                    </span>
+                                    <span>{formatCurrency(Number(item.subtotal))}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-gray-500 italic">No items available</p>
+                              )}
                             </div>
 
                             {/* Payment info */}
