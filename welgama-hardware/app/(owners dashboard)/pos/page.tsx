@@ -37,18 +37,5 @@ export default async function POSPage() {
     costPrice: Number(p.costPrice),
   }));
 
-  // Fetch customers
-  const customersRaw = await prisma.customer.findMany({
-    orderBy: {
-      name: 'asc',
-    },
-  });
-
-  // Convert Decimal to number
-  const customers = customersRaw.map(c => ({
-    ...c,
-    balance: Number(c.balance),
-  }));
-
-  return <POSClient products={products} customers={customers} session={session} />;
+  return <POSClient products={products} session={session} />;
 }

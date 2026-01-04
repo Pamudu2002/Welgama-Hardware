@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useTransition, useEffect } from 'react';
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react';
 import { BookOpen, Search, DollarSign, Calendar, CheckCircle } from 'lucide-react';
 import { makePayment } from '@/lib/action';
 import { useAlert } from '@/app/components/AlertProvider';
 import { ButtonLoader, Spinner } from '@/app/components/Loading';
+import { PaginationControls } from '@/app/components/PaginationControls';
 
 type Customer = {
   id: number;
@@ -42,8 +43,6 @@ type CreditSale = {
 };
 
 type BooksClientProps = {
-  customers: Customer[];
-  creditSales: CreditSale[];
   session: any;
 };
 
@@ -53,32 +52,143 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-export default function BooksClient({ customers, creditSales, session }: BooksClientProps) {
+export default function BooksClient({ session }: BooksClientProps) {
   const { showAlert } = useAlert();
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedSales, setSelectedSales] = useState<number[]>([]);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [customerData, setCustomerData] = useState(customers);
-  const [salesData, setSalesData] = useState(creditSales);
+  const [customerData, setCustomerData] = useState<Customer[]>([]);
+  const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<Customer | null>(null);
+  const [isCustomerSearchLoading, setIsCustomerSearchLoading] = useState(false);
+  const [salesData, setSalesData] = useState<CreditSale[]>([]);
+  const [isLoadingSales, setIsLoadingSales] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const salesRef = useRef<HTMLDivElement>(null);
+  const prevLoadingRef = useRef(false);
+  const shouldScrollRef = useRef(false);
+  const prevPageRef = useRef(1);
 
   useEffect(() => {
-    setCustomerData(customers);
-  }, [customers]);
+    if (!customerSearch.trim()) {
+      setCustomerData([]);
+      setIsCustomerSearchLoading(false);
+      return;
+    }
 
+    let isActive = true;
+    const controller = new AbortController();
+
+    const fetchCustomers = async () => {
+      setIsCustomerSearchLoading(true);
+      try {
+        const params = new URLSearchParams({
+          search: customerSearch.trim(),
+          limit: '25',
+        });
+
+        const response = await fetch(`/api/customers?${params}`, { signal: controller.signal });
+        if (!response.ok) {
+          if (isActive) {
+            setCustomerData([]);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (isActive) {
+          setCustomerData(data.data || []);
+        }
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
+        console.error('Failed to search customers:', error);
+        if (isActive) {
+          setCustomerData([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsCustomerSearchLoading(false);
+        }
+      }
+    };
+
+    fetchCustomers();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [customerSearch]);
+
+  // Fetch credit sales with pagination
   useEffect(() => {
-    setSalesData(creditSales);
-  }, [creditSales]);
+    const fetchSales = async () => {
+      setIsLoadingSales(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: '20',
+          ...(searchTerm && { search: searchTerm }),
+        });
 
-  // Filter customers by search
-  const filteredCustomers = useMemo(() => {
-    if (!customerSearch) return customerData;
-    return customerData.filter(c =>
-      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-      c.phone?.includes(customerSearch)
-    );
-  }, [customerData, customerSearch]);
+        const response = await fetch(`/api/books?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSalesData(data.data);
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch sales:', error);
+        showAlert('error', 'Failed to load credit sales');
+      } finally {
+        setIsLoadingSales(false);
+      }
+    };
+
+    fetchSales();
+  }, [currentPage, searchTerm]);
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomerId(customer.id);
+    setSelectedCustomerDetails(customer);
+    setSelectedSales([]);
+    setCustomerSearch('');
+    setCustomerData([]);
+  };
+
+  const clearSelectedCustomer = () => {
+    setSelectedCustomerId(null);
+    setSelectedCustomerDetails(null);
+    setSelectedSales([]);
+    setCustomerSearch('');
+    setCustomerData([]);
+  };
+
+  // Track page changes
+  useEffect(() => {
+    if (prevPageRef.current !== currentPage) {
+      shouldScrollRef.current = true;
+      prevPageRef.current = currentPage;
+    }
+  }, [currentPage]);
+
+  // Scroll to top of sales list when page changes (after data loads)
+  useEffect(() => {
+    // Scroll when loading changes from true to false AND we should scroll
+    if (prevLoadingRef.current && !isLoadingSales && shouldScrollRef.current && salesRef.current) {
+      salesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      shouldScrollRef.current = false;
+    }
+    prevLoadingRef.current = isLoadingSales;
+  }, [isLoadingSales]);
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page on new search
+  };
 
   // Get sales for selected customer
   const customerSales = useMemo(() => {
@@ -135,7 +245,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
       });
 
       if (result.success) {
-        const currentBalance = selectedCustomer ? Number(selectedCustomer.balance) || 0 : 0;
+        const currentBalance = selectedCustomerDetails ? Number(selectedCustomerDetails.balance) || 0 : 0;
         const appliedAmount = result.appliedAmount ?? Math.min(amount, selectedTotal);
         const change = result.change ?? Math.max(amount - appliedAmount, 0);
         const updatedBalance = result.remainingBalance ?? Math.max(currentBalance - appliedAmount, 0);
@@ -184,6 +294,12 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
           )
         );
 
+        setSelectedCustomerDetails((prev) =>
+          prev && prev.id === selectedCustomerId
+            ? { ...prev, balance: updatedBalance }
+            : prev
+        );
+
         const changeSegment = change > 0 ? ` • Change ${formatCurrency(change)}` : '';
         showAlert(
           'success',
@@ -199,8 +315,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
     });
   };
 
-  const selectedCustomer = customerData.find(c => c.id === selectedCustomerId);
-  const remainingBalance = selectedCustomer ? Math.max(Number(selectedCustomer.balance) || 0, 0) : 0;
+  const remainingBalance = selectedCustomerDetails ? Math.max(Number(selectedCustomerDetails.balance) || 0, 0) : 0;
 
   return (
     <div className="min-h-screen">
@@ -232,7 +347,7 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
             {/* Customer Search & Select */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Customer</h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
@@ -243,29 +358,82 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <select
-                  value={selectedCustomerId || ''}
-                  onChange={(e) => {
-                    setSelectedCustomerId(e.target.value ? parseInt(e.target.value) : null);
-                    setSelectedSales([]);
-                  }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- Select Customer --</option>
-                  {filteredCustomers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} {customer.phone ? `- ${customer.phone}` : ''}
-                    </option>
-                  ))}
-                </select>
+
+                {customerSearch.trim() !== '' && (
+                  <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-200 shadow-inner bg-gradient-to-b from-gray-50 to-white">
+                    {isCustomerSearchLoading ? (
+                    <div className="p-6 text-center">
+                      <Spinner className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <p className="text-sm text-gray-600 font-medium">Searching customers...</p>
+                    </div>
+                  ) : customerData.length === 0 ? (
+                    <div className="p-6 text-center">
+                      <div className="h-10 w-10 mx-auto mb-2 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Search className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium">No customers found</p>
+                      <p className="text-xs text-gray-400 mt-1">Try a different search term</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {customerData.map((customer, index) => (
+                        <button
+                          key={customer.id}
+                          onClick={() => handleSelectCustomer(customer)}
+                          className={`w-full text-left p-4 flex items-center gap-3 transition-all duration-200 group ${
+                            selectedCustomerId === customer.id 
+                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' 
+                              : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50/30 hover:shadow-sm'
+                          } ${index === 0 ? 'rounded-t-xl' : ''} ${index === customerData.length - 1 ? 'rounded-b-xl' : ''}`}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center transition-all ${
+                            selectedCustomerId === customer.id
+                              ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30'
+                              : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-100 group-hover:to-indigo-100'
+                          }`}>
+                            <Search className={`h-5 w-5 ${
+                              selectedCustomerId === customer.id ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
+                            }`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-semibold truncate ${
+                              selectedCustomerId === customer.id ? 'text-blue-900' : 'text-gray-900'
+                            }`}>
+                              {customer.name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-xs text-gray-500 truncate">
+                                {customer.phone || 'No phone available'}
+                              </p>
+                              {Number(customer.balance) > 0 && (
+                                <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full flex-shrink-0">
+                                  Due: {formatCurrency(Number(customer.balance))}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  </div>
+                )}
               </div>
 
-              {selectedCustomer && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Total Balance:</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(remainingBalance)}
-                  </p>
+              {selectedCustomerDetails && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Selected Customer</p>
+                    <p className="font-semibold text-gray-900">{selectedCustomerDetails.name}</p>
+                    <p className="text-xs text-gray-500">Balance: {formatCurrency(remainingBalance)}</p>
+                  </div>
+                  <button
+                    onClick={clearSelectedCustomer}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Change
+                  </button>
                 </div>
               )}
             </div>
@@ -325,26 +493,54 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
 
           {/* Right: Credit Sales List */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Credit Sales</h2>
-                {customerSales.length > 0 && (
-                  <button
-                    onClick={selectAll}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Select All Unpaid
-                  </button>
-                )}
-              </div>
+            <div ref={salesRef} className="bg-white rounded-2xl shadow-xl overflow-hidden relative">
+              {/* Loading Overlay */}
+              {isLoadingSales && (
+                <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <p className="text-sm text-gray-600 font-medium">Loading credit sales...</p>
+                  </div>
+                </div>
+              )}
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Credit Sales</h2>
+                  {customerSales.length > 0 && (
+                    <button
+                      onClick={selectAll}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Select All Unpaid
+                    </button>
+                  )}
+                </div>
 
-              {!selectedCustomerId ? (
-                <p className="text-gray-500 text-center py-8">Please select a customer to view their credit sales</p>
-              ) : customerSales.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No credit sales found for this customer</p>
-              ) : (
-                <div className="space-y-4">
-                  {customerSales.map((sale) => {
+                {/* Search bar */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by customer name or phone..."
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {isLoadingSales ? (
+                  <div className="flex justify-center py-12">
+                    <Spinner className="h-8 w-8 text-blue-600" />
+                  </div>
+                ) : !selectedCustomerId ? (
+                  <p className="text-gray-500 text-center py-8">Please select a customer to view their credit sales</p>
+                ) : customerSales.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No credit sales found for this customer</p>
+                ) : (
+                  <div className="space-y-4">
+                    {customerSales.map((sale) => {
                     const totalPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
                     const amountDue = Number(sale.totalAmount) - totalPaid;
                     const isFullyPaid = amountDue <= 0;
@@ -385,14 +581,18 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                             {/* Items */}
                             <div className="bg-gray-50 rounded p-3 mb-2">
                               <p className="text-xs font-semibold text-gray-700 mb-2">Items:</p>
-                              {sale.items.map((item, idx) => (
-                                <div key={idx} className="text-xs text-gray-600 flex justify-between">
-                                  <span>
-                                    {item.product.name} x {item.quantity} {item.product.unit}
-                                  </span>
-                                  <span>{formatCurrency(Number(item.subtotal))}</span>
-                                </div>
-                              ))}
+                              {sale.items && sale.items.length > 0 ? (
+                                sale.items.map((item, idx) => (
+                                  <div key={idx} className="text-xs text-gray-600 flex justify-between">
+                                    <span>
+                                      {item.product.name} x {item.quantity} {item.product.unit}
+                                    </span>
+                                    <span>{formatCurrency(Number(item.subtotal))}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-gray-500 italic">No items available</p>
+                              )}
                             </div>
 
                             {/* Payment info */}
@@ -419,6 +619,17 @@ export default function BooksClient({ customers, creditSales, session }: BooksCl
                     );
                   })}
                 </div>
+              )}
+              </div>
+
+              {/* Pagination Controls */}
+              {!isLoadingSales && salesData.length > 0 && (
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  isLoading={isLoadingSales}
+                />
               )}
             </div>
           </div>

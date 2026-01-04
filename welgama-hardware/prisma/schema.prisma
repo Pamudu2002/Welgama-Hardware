@@ -26,6 +26,11 @@ model Category {
   products Product[]
 }
 
+model Unit {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+}
+
 model Product {
   id                Int            @id @default(autoincrement())
   name              String

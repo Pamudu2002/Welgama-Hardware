@@ -50,8 +50,21 @@ async function main() {
     console.log(`✅ Category created: ${category.name}`);
   }
 
-  // 4. Create 100 Products
-  const units = ['pcs', 'kg', 'box', 'pack', 'l', 'm', 'g', 'cm'];
+  // 4. Create Units
+  const units = ['pcs', 'kg', 'g', 'l', 'ml', 'box', 'pack', 'm', 'cm', 'ft'];
+  
+  const createdUnits = [];
+  for (const unitName of units) {
+    const unit = await prisma.unit.upsert({
+      where: { name: unitName },
+      update: {},
+      create: { name: unitName },
+    });
+    createdUnits.push(unit);
+    console.log(`✅ Unit created: ${unit.name}`);
+  }
+
+  // 5. Create 100 Products
   
   const productNames = [
     // Hand Tools (10)

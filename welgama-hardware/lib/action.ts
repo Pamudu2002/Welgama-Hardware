@@ -216,6 +216,36 @@ export async function addCategory(name: string) {
   }
 }
 
+// Add a new unit
+export async function addUnit(name: string) {
+  const session = await auth();
+  if (!canManageInventory(session?.user?.role)) {
+    return { success: false, message: 'Unauthorized: Only authorized staff can add units.' };
+  }
+  const actor = getActorName(session?.user as SessionActor);
+
+  try {
+    const unit = await prisma.unit.create({
+      data: { name: name.trim() },
+    });
+
+    await logActivity({
+      userId: session?.user?.id,
+      action: 'unit.create',
+      description: `${actor} created unit ${unit.name}`,
+      metadata: {
+        unitId: unit.id,
+        name: unit.name,
+      },
+    });
+    
+    revalidatePath('/inventory');
+    return { success: true, message: 'Unit added successfully!', unit };
+  } catch (error) {
+    return { success: false, message: 'Failed to add unit. It might already exist.' };
+  }
+}
+
 // Add a new product
 const ProductSchema = z.object({
   name: z.string().min(1, 'Product name is required'),

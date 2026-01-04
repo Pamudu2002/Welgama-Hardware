@@ -2,9 +2,14 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { Plus } from 'lucide-react';
-import { addProduct, addCategory } from '@/lib/action';
+import { addProduct, addCategory, addUnit } from '@/lib/action';
 
 type Category = {
+  id: number;
+  name: string;
+};
+
+type Unit = {
   id: number;
   name: string;
 };
@@ -23,19 +28,18 @@ type Product = {
 
 type AddProductFormProps = {
   categories: Category[];
+  units: Unit[];
   onSuccess: (product: Product, message?: string) => void;
 };
 
-const PREDEFINED_UNITS = ['pcs', 'kg', 'g', 'l', 'ml', 'box', 'pack', 'm', 'cm', 'ft'];
-
-export default function AddProductForm({ categories, onSuccess }: AddProductFormProps) {
+export default function AddProductForm({ categories, units, onSuccess }: AddProductFormProps) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState('');
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [showNewUnit, setShowNewUnit] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newUnitName, setNewUnitName] = useState('');
-  const [availableUnits, setAvailableUnits] = useState(PREDEFINED_UNITS);
+  const [availableUnits, setAvailableUnits] = useState(units);
   const [availableCategories, setAvailableCategories] = useState(categories);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -65,15 +69,18 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
       return;
     }
 
-    if (!availableUnits.includes(newUnitName.trim())) {
-      setAvailableUnits([...availableUnits, newUnitName.trim()]);
-      setNewUnitName('');
-      setShowNewUnit(false);
-      setMessage('Unit added successfully!');
-      setTimeout(() => setMessage(''), 3000);
-    } else {
-      setMessage('Unit already exists');
-    }
+    startTransition(async () => {
+      const result = await addUnit(newUnitName.trim());
+      if (result.success && result.unit) {
+        setAvailableUnits([...availableUnits, result.unit]);
+        setNewUnitName('');
+        setShowNewUnit(false);
+        setMessage('Unit added successfully!');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage(result.message || 'Failed to add unit');
+      }
+    });
   };
 
   const handleSubmit = async (formData: FormData) => {
@@ -234,8 +241,8 @@ export default function AddProductForm({ categories, onSuccess }: AddProductForm
             >
               <option value="">Select a unit</option>
               {availableUnits.map((unit) => (
-                <option key={unit} value={unit}>
-                  {unit}
+                <option key={unit.id} value={unit.name}>
+                  {unit.name}
                 </option>
               ))}
             </select>

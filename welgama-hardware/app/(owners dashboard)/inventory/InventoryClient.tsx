@@ -1,11 +1,12 @@
 'use client';
 
 import { Package, Search, Plus, Filter, X, Edit2, Trash2, Save, Minus } from 'lucide-react';
-import { useState, useMemo, useTransition, useEffect } from 'react';
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react';
 import AddProductForm from './AddProductForm';
 import { deleteProduct, updateProduct } from '@/lib/action';
 import { useAlert } from '@/app/components/AlertProvider';
 import { ButtonLoader, Spinner } from '@/app/components/Loading';
+import { PaginationControls } from '@/app/components/PaginationControls';
 
 type Product = {
   id: number;
@@ -27,9 +28,14 @@ type Category = {
   name: string;
 };
 
+type Unit = {
+  id: number;
+  name: string;
+};
+
 type InventoryClientProps = {
-  inventoryItems: Product[];
   categories: Category[];
+  units: Unit[];
   session: any;
 };
 
@@ -41,65 +47,129 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-export default function InventoryClient({ inventoryItems, categories, session }: InventoryClientProps) {
+export default function InventoryClient({ categories, units, session }: InventoryClientProps) {
   const { showAlert, showConfirm } = useAlert();
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('last-added');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [isPending, startTransition] = useTransition();
-  const itemsPerPage = 10;
-  const [items, setItems] = useState(inventoryItems);
+  const [items, setItems] = useState<Product[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [stats, setStats] = useState({
+    totalCount: 0,
+    totalCostValue: 0,
+    totalSellingValue: 0,
+    lowStockCount: 0,
+  });
+  const tableRef = useRef<HTMLDivElement>(null);
+  const prevLoadingRef = useRef(false);
+  const shouldScrollRef = useRef(false);
+  const prevPageRef = useRef(1);
 
+  // Fetch inventory items from API
   useEffect(() => {
-    setItems(inventoryItems);
-  }, [inventoryItems]);
+    const fetchItems = async () => {
+      setIsLoadingItems(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: '20',
+          sortBy,
+          ...(searchTerm && { search: searchTerm }),
+          ...(selectedCategory && { categoryId: selectedCategory }),
+          ...(lowStockOnly && { lowStockOnly: 'true' }),
+        });
 
-  const ensureValidPage = (nextLength: number) => {
-    const totalPages = Math.max(1, Math.ceil(Math.max(nextLength, 1) / itemsPerPage));
-    setCurrentPage(prev => Math.min(prev, totalPages));
-  };
+        const response = await fetch(`/api/inventory?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setItems(data.data);
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (error) {
+        console.error('Failed to fetch inventory:', error);
+        showAlert('error', 'Failed to load inventory items');
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
 
-  const handleProductAdded = (product: Product, message?: string) => {
-    setItems(prev => [product, ...prev.filter(item => item.id !== product.id)]);
-    setShowAddForm(false);
-    setCurrentPage(1);
-    showAlert('success', 'Product Added!', message || 'Product added successfully!');
-  };
+    fetchItems();
+  }, [currentPage, searchTerm, selectedCategory, sortBy, lowStockOnly]);
 
-  // Filter and search logic
-  const filteredItems = useMemo(() => {
-    let list = items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === '' || item.categoryId.toString() === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
+  // Fetch inventory stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/inventory/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch inventory stats:', error);
+      }
+    };
 
-    // Apply sorting
-    switch (sortBy) {
-      case 'last-added':
-        list.sort((a, b) => b.id - a.id);
-        break;
-      case 'first-added':
-        list.sort((a, b) => a.id - b.id);
-        break;
-      case 'alphabetic':
-        list.sort((a, b) => a.name.localeCompare(b.name));
-        break;
+    fetchStats();
+  }, [items]); // Refetch stats when items change (after add/update/delete)
+
+  // Track page changes
+  useEffect(() => {
+    if (prevPageRef.current !== currentPage) {
+      shouldScrollRef.current = true;
+      prevPageRef.current = currentPage;
     }
+  }, [currentPage]);
 
-    return list;
-  }, [items, searchTerm, selectedCategory, sortBy]);
+  // Scroll to top of table when page changes (after data loads)
+  useEffect(() => {
+    // Scroll when loading changes from true to false AND we should scroll
+    if (prevLoadingRef.current && !isLoadingItems && shouldScrollRef.current && tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      shouldScrollRef.current = false;
+    }
+    prevLoadingRef.current = isLoadingItems;
+  }, [isLoadingItems]);
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  const paginatedItems = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredItems.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredItems, currentPage]);
+  const handleProductAdded = async (product: Product, message?: string) => {
+    setShowAddForm(false);
+    showAlert('success', 'Product Added!', message || 'Product added successfully!');
+    
+    // Refetch items to show the new product
+    setIsLoadingItems(true);
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '20',
+        sortBy,
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedCategory && { categoryId: selectedCategory }),
+        ...(lowStockOnly && { lowStockOnly: 'true' }),
+      });
+
+      const response = await fetch(`/api/inventory?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setItems(data.data);
+        setTotalPages(data.pagination.totalPages);
+        setCurrentPage(1);
+      }
+    } catch (error) {
+      console.error('Failed to refetch inventory:', error);
+    } finally {
+      setIsLoadingItems(false);
+    }
+  };
+
+  // Items are already filtered and paginated by the API
+  const paginatedItems = items;
 
   // Reset to page 1 when filter changes
   const handleSearchChange = (value: string) => {
@@ -109,6 +179,11 @@ export default function InventoryClient({ inventoryItems, categories, session }:
 
   const handleCategoryChange = (value: string) => {
     setSelectedCategory(value);
+    setCurrentPage(1);
+  };
+
+  const handleLowStockToggle = () => {
+    setLowStockOnly(!lowStockOnly);
     setCurrentPage(1);
   };
 
@@ -163,7 +238,21 @@ export default function InventoryClient({ inventoryItems, categories, session }:
         console.log('Update result:', result);
         
         if (result.success && result.product) {
-          setItems(prev => prev.map(item => (item.id === productId ? result.product : item)));
+          // Refetch current page to show updated data
+          const params = new URLSearchParams({
+            page: currentPage.toString(),
+            limit: '20',
+            sortBy,
+            ...(searchTerm && { search: searchTerm }),
+            ...(selectedCategory && { categoryId: selectedCategory }),
+            ...(lowStockOnly && { lowStockOnly: 'true' }),
+          });
+          const response = await fetch(`/api/inventory?${params}`);
+          if (response.ok) {
+            const data = await response.json();
+            setItems(data.data);
+            setTotalPages(data.pagination.totalPages);
+          }
           showAlert('success', 'Product Updated!', result.message || 'Product updated successfully!');
           setEditingId(null);
           setEditData({});
@@ -188,11 +277,21 @@ export default function InventoryClient({ inventoryItems, categories, session }:
       try {
         const result = await deleteProduct(productId);
         if (result.success) {
-          setItems(prev => {
-            const next = prev.filter(item => item.id !== productId);
-            ensureValidPage(next.length);
-            return next;
+          // Refetch current page
+          const params = new URLSearchParams({
+            page: currentPage.toString(),
+            limit: '20',
+            sortBy,
+            ...(searchTerm && { search: searchTerm }),
+            ...(selectedCategory && { categoryId: selectedCategory }),
+            ...(lowStockOnly && { lowStockOnly: 'true' }),
           });
+          const response = await fetch(`/api/inventory?${params}`);
+          if (response.ok) {
+            const data = await response.json();
+            setItems(data.data);
+            setTotalPages(data.pagination.totalPages);
+          }
           showAlert('success', 'Product Deleted', result.message || 'Product deleted successfully!');
         } else {
           showAlert('error', 'Delete Failed', result.message || 'Failed to delete product.');
@@ -259,31 +358,31 @@ export default function InventoryClient({ inventoryItems, categories, session }:
             showAddForm ? 'max-h-[800px] opacity-100 mb-6' : 'max-h-0 opacity-0'
           }`}
         >
-          <AddProductForm categories={categories} onSuccess={handleProductAdded} />
+          <AddProductForm categories={categories} units={units} onSuccess={handleProductAdded} />
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
             <p className="text-sm font-medium text-gray-600">Total Products</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{items.length}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalCount}</p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
-            <p className="text-sm font-medium text-gray-600">Total Cost</p>
+            <p className="text-sm font-medium text-gray-600">Total Cost Value</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">
-              {formatCurrency(items.reduce((acc, item) => acc + (Number(item.costPrice) * item.quantity), 0))}
+              {formatCurrency(stats.totalCostValue)}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
-            <p className="text-sm font-medium text-gray-600">Total Selling Price</p>
+            <p className="text-sm font-medium text-gray-600">Total Selling Value</p>
             <p className="text-3xl font-bold text-green-600 mt-2">
-              {formatCurrency(items.reduce((acc, item) => acc + (Number(item.sellingPrice) * item.quantity), 0))}
+              {formatCurrency(stats.totalSellingValue)}
             </p>
           </div>
           <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20">
-            <p className="text-sm font-medium text-gray-600">Low Stock</p>
+            <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
             <p className="text-3xl font-bold text-red-600 mt-2">
-              {items.filter(item => item.quantity < item.lowStockThreshold).length}
+              {stats.lowStockCount}
             </p>
           </div>
         </div>
@@ -327,11 +426,30 @@ export default function InventoryClient({ inventoryItems, categories, session }:
                 <option value="alphabetic">Alphabetic (A-Z)</option>
               </select>
             </div>
+            <button
+              onClick={handleLowStockToggle}
+              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+                lowStockOnly
+                  ? 'bg-red-600 text-white border-red-600'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {lowStockOnly ? '✓ Low Stock' : 'Low Stock'}
+            </button>
           </div>
         </div>
 
         {/* Inventory Table */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 overflow-hidden">
+        <div ref={tableRef} className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/10 border border-white/20 overflow-hidden relative">
+          {/* Loading Overlay */}
+          {isLoadingItems && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="flex flex-col items-center gap-3">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <p className="text-sm text-gray-600 font-medium">Loading inventory...</p>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
@@ -543,67 +661,17 @@ export default function InventoryClient({ inventoryItems, categories, session }:
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between bg-white/80">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
+          {/* Pagination - Show if we have pages (keep visible during loading) */}
+          {totalPages > 0 && (
+            <div className="border-t border-gray-200 px-4 py-3 bg-white/80">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={Math.max(1, totalPages)}
+                onPageChange={setCurrentPage}
+                isLoading={isLoadingItems}
+              />
             </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                  <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, filteredItems.length)}
-                  </span>{' '}
-                  of <span className="font-medium">{filteredItems.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Footer Info */}
