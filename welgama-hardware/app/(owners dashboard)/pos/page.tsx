@@ -35,6 +35,7 @@ export default async function POSPage() {
     ...p,
     sellingPrice: Number(p.sellingPrice),
     costPrice: Number(p.costPrice),
+    quantity: Number(p.quantity),
   }));
 
   return <POSClient products={products} session={session} />;

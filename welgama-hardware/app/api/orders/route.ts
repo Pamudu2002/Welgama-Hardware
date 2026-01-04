@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       items: sale.items.map((item: any) => ({
         id: item.id,
         productName: item.product?.name || 'Unknown Product',
-        quantity: item.quantity,
+        quantity: Number(item.quantity),
         unit: item.product?.unit || 'pcs',
         price: Number(item.priceSnapshot || 0),
         discount: Number(item.discount || 0),

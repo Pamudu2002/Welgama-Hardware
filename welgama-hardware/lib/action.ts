@@ -280,6 +280,10 @@ export async function addProduct(formData: FormData) {
 
   const { name, categoryId, costPrice, sellingPrice, quantity, unit, lowStockThreshold } = parsed.data;
 
+  console.log('=== ADD PRODUCT DEBUG ===');
+  console.log('Raw quantity from form:', quantity);
+  console.log('After parseFloat:', parseFloat(quantity));
+
   try {
     const product = await prisma.product.create({
       data: {
@@ -287,7 +291,7 @@ export async function addProduct(formData: FormData) {
         categoryId: parseInt(categoryId),
         costPrice: parseFloat(costPrice),
         sellingPrice: parseFloat(sellingPrice),
-        quantity: parseInt(quantity),
+        quantity: parseFloat(quantity),
         unit,
         lowStockThreshold: parseInt(lowStockThreshold),
       },
@@ -295,6 +299,9 @@ export async function addProduct(formData: FormData) {
         category: true,
       },
     });
+
+    console.log('Created product quantity from DB:', product.quantity);
+    console.log('===========================');
 
     await logActivity({
       userId: session?.user?.id,
@@ -357,6 +364,10 @@ export async function updateProduct(formData: FormData) {
 
   const { id, name, categoryId, costPrice, sellingPrice, quantity, unit, lowStockThreshold, reason } = parsed.data;
 
+  console.log('=== UPDATE PRODUCT DEBUG ===');
+  console.log('Raw quantity from form:', quantity);
+  console.log('After parseFloat:', parseFloat(quantity));
+
   try {
     // Get the current product to check for quantity change
     const currentProduct = await prisma.product.findUnique({
@@ -367,8 +378,11 @@ export async function updateProduct(formData: FormData) {
       return { success: false, message: 'Product not found.' };
     }
 
-    const newQuantity = parseInt(quantity);
-    const quantityChanged = newQuantity !== currentProduct.quantity;
+    const newQuantity = parseFloat(quantity);
+    console.log('newQuantity:', newQuantity);
+    console.log('currentProduct.quantity:', currentProduct.quantity);
+    console.log('Comparison:', newQuantity, '!==', Number(currentProduct.quantity));
+    const quantityChanged = newQuantity !== Number(currentProduct.quantity);
 
     // Update product
     const updatedProduct = await prisma.product.update({
@@ -387,14 +401,17 @@ export async function updateProduct(formData: FormData) {
       },
     });
 
+    console.log('Updated product quantity from DB:', updatedProduct.quantity);
+    console.log('===========================');
+
     // Log inventory change if quantity changed
     if (quantityChanged && reason) {
       const userId = session?.user?.id;
       await prisma.inventoryLog.create({
         data: {
           productId: parseInt(id),
-          quantityChange: newQuantity - currentProduct.quantity,
-          quantityBefore: currentProduct.quantity,
+          quantityChange: newQuantity - Number(currentProduct.quantity),
+          quantityBefore: Number(currentProduct.quantity),
           quantityAfter: newQuantity,
           reason: reason,
           userId: userId ? (typeof userId === 'string' ? parseInt(userId) : userId) : null,
@@ -546,12 +563,12 @@ export async function completeSale(data: {
         items: {
           create: data.items.map(item => ({
             productId: item.productId,
-            quantity: item.quantity,
-            priceSnapshot: item.price,
-            costPriceSnapshot: item.costPrice,
-            discount: item.discount,
+            quantity: Number(item.quantity),
+            priceSnapshot: Number(item.price),
+            costPriceSnapshot: Number(item.costPrice),
+            discount: Number(item.discount),
             discountType: item.discountType,
-            subtotal: item.subtotal,
+            subtotal: Number(item.subtotal),
           })),
         },
       },
@@ -563,7 +580,7 @@ export async function completeSale(data: {
         where: { id: item.productId },
         data: {
           quantity: {
-            decrement: item.quantity,
+            decrement: Number(item.quantity),
           },
         },
       });
@@ -632,12 +649,12 @@ export async function addToBook(data: { customerId: number; items: any[]; isDeli
         items: {
           create: data.items.map(item => ({
             productId: item.productId,
-            quantity: item.quantity,
-            priceSnapshot: item.price,
-            costPriceSnapshot: item.costPrice,
-            discount: item.discount,
+            quantity: Number(item.quantity),
+            priceSnapshot: Number(item.price),
+            costPriceSnapshot: Number(item.costPrice),
+            discount: Number(item.discount),
             discountType: item.discountType,
-            subtotal: item.subtotal,
+            subtotal: Number(item.subtotal),
           })),
         },
       },
@@ -659,7 +676,7 @@ export async function addToBook(data: { customerId: number; items: any[]; isDeli
         where: { id: item.productId },
         data: {
           quantity: {
-            decrement: item.quantity,
+            decrement: Number(item.quantity),
           },
         },
       });
@@ -715,6 +732,7 @@ export async function makePayment(data: {
     const sales = await prisma.sale.findMany({
       where: { id: { in: saleIds } },
       include: { payments: true },
+      orderBy: { date: 'asc' }, // Process earliest sales first
     });
 
     // Distribute payment across sales

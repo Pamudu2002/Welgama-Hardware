@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     // Apply low stock filter in-memory (since it requires comparing quantity with lowStockThreshold)
     let filteredProducts = allProducts;
     if (lowStockOnly) {
-      filteredProducts = allProducts.filter(p => p.quantity < p.lowStockThreshold);
+      filteredProducts = allProducts.filter(p => Number(p.quantity) < p.lowStockThreshold);
     }
 
     // Apply pagination to filtered results
@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
       ...product,
       costPrice: Number(product.costPrice),
       sellingPrice: Number(product.sellingPrice),
+      quantity: Number(product.quantity),
     }));
 
     const response = createPaginatedResponse(serializedProducts, filteredTotalCount, { page, limit: validatedLimit });
