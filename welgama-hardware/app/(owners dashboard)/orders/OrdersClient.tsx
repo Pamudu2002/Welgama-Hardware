@@ -486,12 +486,274 @@ export default function OrdersClient({ session }: OrdersClientProps) {
     if (printContent) {
       const windowPrint = window.open('', '', 'width=800,height=600');
       windowPrint?.document.write('<html><head><title>Print Bill</title>');
-      windowPrint?.document.write('<style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background-color:#f2f2f2}.text-right{text-align:right}.font-bold{font-weight:bold}.mb-4{margin-bottom:16px}.border-t{border-top:2px solid #000;margin-top:8px;padding-top:8px}</style>');
+      windowPrint?.document.write(`
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            width: 80mm;
+            padding: 5mm;
+            background: white;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+          }
+          .store-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .order-info {
+            text-align: center;
+            font-size: 10px;
+            margin-bottom: 10px;
+          }
+          .section {
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+          }
+          .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 11px;
+          }
+          .label {
+            font-weight: bold;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+          }
+          th {
+            text-align: left;
+            border-bottom: 1px solid #000;
+            padding: 5px 0;
+            font-size: 10px;
+          }
+          td {
+            padding: 5px 0;
+            font-size: 11px;
+            vertical-align: top;
+          }
+          .item-name {
+            width: 55%;
+          }
+          .item-qty {
+            width: 15%;
+            text-align: center;
+          }
+          .item-price {
+            width: 30%;
+            text-align: right;
+          }
+          .totals {
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            margin-top: 5px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            font-size: 11px;
+          }
+          .grand-total {
+            font-size: 14px;
+            font-weight: bold;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            padding: 5px 0;
+            margin: 5px 0;
+          }
+          .payment-info {
+            border-top: 1px dashed #000;
+            padding-top: 8px;
+            margin-top: 8px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 15px;
+            border-top: 2px dashed #000;
+            padding-top: 10px;
+            font-size: 10px;
+          }
+          .thank-you {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          @media print {
+            body {
+              width: 80mm;
+            }
+          }
+        </style>
+      `);
       windowPrint?.document.write('</head><body>');
-      windowPrint?.document.write(printContent.innerHTML);
+      
+      // Build receipt content
+      let receiptHTML = `
+        <div class="header">
+          <div class="store-name">WELGAMA HARDWARE</div>
+          <div class="order-info">
+            Order #${selectedSale.id}<br>
+            ${formatDate(selectedSale.date)}
+          </div>
+        </div>
+        
+        <div class="section">
+          <div class="row">
+            <span class="label">Customer:</span>
+            <span>${selectedSale.customer?.name || 'Walk-in'}</span>
+          </div>
+          ${selectedSale.customer?.phone ? `
+          <div class="row">
+            <span class="label">Phone:</span>
+            <span>${selectedSale.customer.phone}</span>
+          </div>
+          ` : ''}
+          <div class="row">
+            <span class="label">Cashier:</span>
+            <span>${selectedSale.cashier}</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment:</span>
+            <span style="font-weight:bold;">${formatPaymentStatus(selectedSale.paymentStatus).toUpperCase()}</span>
+          </div>
+          <div class="row">
+            <span class="label">Delivery:</span>
+            <span style="font-weight:bold;">${selectedSale.isDelivered ? 'DELIVERED' : 'PENDING'}</span>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th class="item-name">Item</th>
+              <th class="item-qty">Qty</th>
+              <th class="item-price">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      selectedSale.items.forEach(item => {
+        receiptHTML += `
+          <tr>
+            <td class="item-name">${item.productName}</td>
+            <td class="item-qty">${item.quantity} ${item.unit}</td>
+            <td class="item-price">${formatCurrency(item.price)}</td>
+          </tr>
+        `;
+        if (item.discount > 0) {
+          receiptHTML += `
+          <tr>
+            <td colspan="2" style="font-size:9px;padding-left:10px;">Discount: ${item.discountType === 'percentage' ? item.discount + '%' : formatCurrency(item.discount)}</td>
+            <td class="item-price">${formatCurrency(item.subtotal)}</td>
+          </tr>
+          `;
+        } else {
+          receiptHTML += `
+          <tr>
+            <td colspan="2"></td>
+            <td class="item-price">${formatCurrency(item.subtotal)}</td>
+          </tr>
+          `;
+        }
+      });
+      
+      const subtotal = selectedSale.items.reduce((sum, item) => sum + item.subtotal, 0);
+      // If order has payment history, sum them. Else use amountPaid from database
+      const totalPaid = (selectedSale.payments && selectedSale.payments.length > 0)
+        ? selectedSale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+        : selectedSale.amountPaid;
+      const remainingBalance = selectedSale.totalAmount - totalPaid;
+      
+      receiptHTML += `
+          </tbody>
+        </table>
+        
+        <div class="totals">
+          <div class="total-row">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(subtotal)}</span>
+          </div>
+          <div class="total-row grand-total">
+            <span>TOTAL:</span>
+            <span>${formatCurrency(selectedSale.totalAmount)}</span>
+          </div>
+        </div>
+      `;
+      
+      // Show amount paid for both normal paid sales and credit sales with payment history
+      if (selectedSale.paymentStatus === 'Paid' || selectedSale.payments.length > 0) {
+        receiptHTML += `
+          <div class="payment-info">
+            <div class="total-row">
+              <span>Amount Paid:</span>
+              <span>${formatCurrency(totalPaid)}</span>
+            </div>
+            ${selectedSale.paymentStatus === 'Paid' && selectedSale.changeGiven > 0 ? `
+            <div class="total-row">
+              <span>Change:</span>
+              <span>${formatCurrency(selectedSale.changeGiven)}</span>
+            </div>
+            ` : ''}
+            ${selectedSale.paymentStatus !== 'Paid' && remainingBalance > 0 ? `
+            <div class="total-row" style="font-weight:bold;">
+              <span>Remaining Balance:</span>
+              <span>${formatCurrency(remainingBalance)}</span>
+            </div>
+            ` : ''}
+          </div>
+        `;
+      }
+      
+      if (selectedSale.payments.length > 0) {
+        receiptHTML += `
+          <div class="payment-info">
+            <div style="font-weight:bold;margin-bottom:5px;">Payment History:</div>
+        `;
+        selectedSale.payments.forEach(payment => {
+          receiptHTML += `
+            <div class="total-row" style="font-size:10px;">
+              <span>${new Date(payment.date).toLocaleDateString()}</span>
+              <span>${formatCurrency(payment.amount)}</span>
+            </div>
+          `;
+        });
+        receiptHTML += `</div>`;
+      }
+      
+      receiptHTML += `
+        <div class="footer">
+          <div class="thank-you">THANK YOU!</div>
+          <div>Visit Again</div>
+        </div>
+      `;
+      
+      windowPrint?.document.write(receiptHTML);
       windowPrint?.document.write('</body></html>');
       windowPrint?.document.close();
-      windowPrint?.print();
+      
+      // Auto print after a short delay
+      setTimeout(() => {
+        windowPrint?.print();
+      }, 250);
     }
   };
 
@@ -760,20 +1022,38 @@ export default function OrdersClient({ session }: OrdersClientProps) {
                   <span className="text-blue-600">{formatCurrency(selectedSale.totalAmount)}</span>
                 </div>
                 
-                {selectedSale.paymentStatus === 'Paid' && (
-                  <>
-                    <div className="flex justify-between text-green-600">
-                      <span>Amount Paid:</span>
-                      <span className="font-medium">{formatCurrency(selectedSale.amountPaid)}</span>
-                    </div>
-                    {selectedSale.changeGiven > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Change:</span>
-                        <span className="font-medium">{formatCurrency(selectedSale.changeGiven)}</span>
-                      </div>
-                    )}
-                  </>
-                )}
+                {(() => {
+                  // If order has payment history, sum them. Else use amountPaid from database
+                  const totalPaid = (selectedSale.payments && selectedSale.payments.length > 0)
+                    ? selectedSale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+                    : selectedSale.amountPaid;
+                  const remainingBalance = selectedSale.totalAmount - totalPaid;
+                  
+                  return (
+                    <>
+                      {(selectedSale.paymentStatus === 'Paid' || selectedSale.payments.length > 0) && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Amount Paid:</span>
+                          <span className="font-medium">{formatCurrency(totalPaid)}</span>
+                        </div>
+                      )}
+                      
+                      {selectedSale.paymentStatus === 'Paid' && selectedSale.changeGiven > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Change:</span>
+                          <span className="font-medium">{formatCurrency(selectedSale.changeGiven)}</span>
+                        </div>
+                      )}
+                      
+                      {selectedSale.paymentStatus !== 'Paid' && remainingBalance > 0 && (
+                        <div className="flex justify-between text-red-600">
+                          <span>Remaining Balance:</span>
+                          <span className="font-medium">{formatCurrency(remainingBalance)}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 
                 {selectedSale.payments.length > 0 && (
                   <div className="border-t border-gray-200 pt-2 mt-2">
