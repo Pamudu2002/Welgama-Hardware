@@ -883,27 +883,28 @@ export default function POSClient({ products, session }: POSClientProps) {
                     <label className="text-sm font-medium text-gray-700">Quantity (Press Enter to add)</label>
                     <div className="flex items-center gap-2 mt-1">
                       <button
-                        onClick={() => setAddItemForm({ ...addItemForm, quantity: Math.max(1, addItemForm.quantity - 1) })}
+                        onClick={() => setAddItemForm({ ...addItemForm, quantity: Math.max(0.01, addItemForm.quantity - 1) })}
                         className="p-2 bg-red-500 text-white rounded hover:bg-red-600"
                       >
                         <Minus className="h-4 w-4" />
                       </button>
                       <input
                         type="number"
+                        step="0.01"
                         value={addItemForm.quantity}
                         onChange={(e) => {
                           const value = e.target.value;
-                          setAddItemForm({ ...addItemForm, quantity: value === '' ? 0 : parseInt(value) || 0 });
+                          setAddItemForm({ ...addItemForm, quantity: value === '' ? 0 : parseFloat(value) || 0 });
                         }}
                         onBlur={(e) => {
-                          if (addItemForm.quantity < 1) {
-                            setAddItemForm({ ...addItemForm, quantity: 1 });
+                          if (addItemForm.quantity < 0.01) {
+                            setAddItemForm({ ...addItemForm, quantity: 0.01 });
                           }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            if (addItemForm.quantity < 1) {
-                              setAddItemForm({ ...addItemForm, quantity: 1 });
+                            if (addItemForm.quantity < 0.01) {
+                              setAddItemForm({ ...addItemForm, quantity: 0.01 });
                             }
                             addToCart();
                           }

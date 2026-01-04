@@ -218,6 +218,7 @@ export default function AddProductForm({ categories, units, onSuccess }: AddProd
             type="number"
             id="quantity"
             name="quantity"
+            step="0.01"
             min="0"
             required
             defaultValue="0"

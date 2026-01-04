@@ -37,7 +37,7 @@ model Product {
   categoryId        Int
   costPrice         Decimal        @db.Decimal(10, 2)
   sellingPrice      Decimal        @db.Decimal(10, 2)
-  quantity          Int            @default(0)
+  quantity          Decimal        @default(0) @db.Decimal(10, 2)
   unit              String
   lowStockThreshold Int            @default(5)
   inventoryLogs     InventoryLog[]
@@ -48,9 +48,9 @@ model Product {
 model InventoryLog {
   id             Int      @id @default(autoincrement())
   productId      Int
-  quantityChange Int
-  quantityBefore Int
-  quantityAfter  Int
+  quantityChange Decimal  @db.Decimal(10, 2)
+  quantityBefore Decimal  @db.Decimal(10, 2)
+  quantityAfter  Decimal  @db.Decimal(10, 2)
   reason         String
   changedAt      DateTime @default(now())
   userId         Int?
@@ -89,7 +89,7 @@ model SaleItem {
   id                Int     @id @default(autoincrement())
   saleId            Int
   productId         Int
-  quantity          Int
+  quantity          Decimal @db.Decimal(10, 2)
   priceSnapshot     Decimal @db.Decimal(10, 2)
   subtotal          Decimal @db.Decimal(10, 2)
   discount          Decimal @default(0.0) @db.Decimal(10, 2)

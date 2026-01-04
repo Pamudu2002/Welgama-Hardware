@@ -194,7 +194,7 @@ export default function InventoryClient({ categories, units, session }: Inventor
       categoryId: product.categoryId,
       costPrice: Number(product.costPrice),
       sellingPrice: Number(product.sellingPrice),
-      quantity: product.quantity,
+      quantity: Number(product.quantity),
       unit: product.unit,
       lowStockThreshold: product.lowStockThreshold,
       changeAmount: 1,
@@ -523,9 +523,10 @@ export default function InventoryClient({ categories, units, session }: Inventor
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
-                                min="1"
+                                step="0.01"
+                                min="0.01"
                                 value={editData.changeAmount || 1}
-                                onChange={(e) => setEditData({ ...editData, changeAmount: parseInt(e.target.value) || 1 })}
+                                onChange={(e) => setEditData({ ...editData, changeAmount: parseFloat(e.target.value) || 1 })}
                                 className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                               <button

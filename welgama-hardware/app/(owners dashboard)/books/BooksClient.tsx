@@ -258,7 +258,14 @@ export default function BooksClient({ session }: BooksClientProps) {
           let remaining = appliedAmount;
           const timestamp = Date.now();
 
-          selectedSales.forEach((saleId, idx) => {
+          // Sort selected sales by date (earliest first) to match backend processing
+          const sortedSelectedSales = selectedSales
+            .map(id => saleMap.get(id))
+            .filter(sale => sale !== undefined)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .map(sale => sale.id);
+
+          sortedSelectedSales.forEach((saleId, idx) => {
             if (remaining <= 0) return;
             const sale = saleMap.get(saleId);
             if (!sale) return;

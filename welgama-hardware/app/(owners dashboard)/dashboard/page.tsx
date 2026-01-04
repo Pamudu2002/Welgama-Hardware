@@ -119,18 +119,19 @@ export default async function DashboardPage() {
     })
   );
 
-  // Get low stock products
-  const lowStockProducts = await prisma.product.findMany({
-    where: {
-      quantity: {
-        lte: prisma.product.fields.lowStockThreshold,
-      },
-    },
+  // Get low stock products - fetch all and filter in JS since we can't compare Decimal with Int in Prisma
+  const allProducts = await prisma.product.findMany({
     orderBy: {
       quantity: 'asc',
     },
-    take: 10,
+    include: {
+      category: true,
+    },
   });
+
+  const lowStockProducts = allProducts
+    .filter(p => Number(p.quantity) < p.lowStockThreshold)
+    .slice(0, 10);
 
   // Get total products and active staff
   const totalProducts = await prisma.product.count();
