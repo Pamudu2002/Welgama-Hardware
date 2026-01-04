@@ -28,8 +28,14 @@ type Category = {
   name: string;
 };
 
+type Unit = {
+  id: number;
+  name: string;
+};
+
 type InventoryClientProps = {
   categories: Category[];
+  units: Unit[];
   session: any;
 };
 
@@ -41,7 +47,7 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-export default function InventoryClient({ categories, session }: InventoryClientProps) {
+export default function InventoryClient({ categories, units, session }: InventoryClientProps) {
   const { showAlert, showConfirm } = useAlert();
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -352,7 +358,7 @@ export default function InventoryClient({ categories, session }: InventoryClient
             showAddForm ? 'max-h-[800px] opacity-100 mb-6' : 'max-h-0 opacity-0'
           }`}
         >
-          <AddProductForm categories={categories} onSuccess={handleProductAdded} />
+          <AddProductForm categories={categories} units={units} onSuccess={handleProductAdded} />
         </div>
 
         {/* Stats Cards */}

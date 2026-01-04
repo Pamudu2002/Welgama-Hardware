@@ -18,5 +18,12 @@ export default async function InventoryPage() {
     },
   });
 
-  return <InventoryClient categories={categories} session={session} />;
+  // Fetch all units for the dropdown
+  const units = await prisma.unit.findMany({
+    orderBy: {
+      name: 'asc',
+    },
+  });
+
+  return <InventoryClient categories={categories} units={units} session={session} />;
 }
