@@ -52,11 +52,13 @@ type DateRange = {
   end: Date | null;
 };
 
-const formatCurrency = (value: number) =>
-  `Rs.${value.toLocaleString('en-LK', {
+const formatCurrency = (value: number | null | undefined) => {
+  const numValue = Number(value || 0);
+  return `Rs.${numValue.toLocaleString('en-LK', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+};
 
 const normalizeDate = (date: Date) => {
   const normalized = new Date(date);
