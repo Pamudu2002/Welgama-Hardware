@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
-import { Search, Plus, Minus, X, ShoppingCart, User, Percent, DollarSign, BookOpen, CheckCircle, Save } from 'lucide-react';
+import { Search, Plus, Minus, X, ShoppingCart, User, Percent, DollarSign, BookOpen, CheckCircle, Save, Printer } from 'lucide-react';
 import { completeSale, addToBook, createCustomer, saveDraft } from '@/lib/action';
 import { useAlert } from '@/app/components/AlertProvider';
 import { ButtonLoader, Spinner } from '@/app/components/Loading';
@@ -36,6 +36,42 @@ type CartItem = {
   subtotal: number;
 };
 
+type OrderItem = {
+  id: number;
+  productName: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  discount: number;
+  discountType: string;
+  subtotal: number;
+};
+
+type Payment = {
+  id: number;
+  amount: number;
+  date: string;
+  note: string | null;
+};
+
+type Sale = {
+  id: number;
+  date: string;
+  totalAmount: number;
+  paymentStatus: string;
+  orderStatus: string;
+  amountPaid: number;
+  changeGiven: number;
+  isDelivered: boolean;
+  cashier: string;
+  customer: {
+    name: string;
+    phone: string | null;
+  } | null;
+  items: OrderItem[];
+  payments: Payment[];
+};
+
 type POSClientProps = {
   products: Product[];
   session: any;
@@ -60,8 +96,9 @@ export default function POSClient({ products, session }: POSClientProps) {
   const [isCustomerSearchLoading, setIsCustomerSearchLoading] = useState(false);
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [loadingAction, setLoadingAction] = useState<null | 'complete' | 'book' | 'draft' | 'customer'>(null);
+  const [loadingAction, setLoadingAction] = useState<null | 'complete' | 'book' | 'draft' | 'customer' | 'print'>(null);
   const [loadedDraftId, setLoadedDraftId] = useState<number | null>(null);
+  const [mostRecentSale, setMostRecentSale] = useState<Sale | null>(null);
   
   // Payment input state
   const [amountPaid, setAmountPaid] = useState<string>('');
@@ -424,6 +461,325 @@ export default function POSClient({ products, session }: POSClientProps) {
     });
   };
 
+  // Fetch and print most recent bill
+  const handlePrintRecentBill = async () => {
+    setLoadingAction('print');
+    try {
+      const response = await fetch('/api/orders?page=1&limit=1');
+      if (!response.ok) {
+        showAlert('error', 'Failed to fetch recent order');
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.data || data.data.length === 0) {
+        showAlert('warning', 'No orders found');
+        return;
+      }
+
+      const sale = data.data[0];
+      printBill(sale);
+    } catch (error) {
+      console.error('Failed to fetch recent order:', error);
+      showAlert('error', 'Failed to load recent order');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // Print bill function (same as OrdersClient)
+  const printBill = (sale: Sale) => {
+    const formatDate = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
+
+    const formatPaymentStatus = (paymentStatus: string) => {
+      if (paymentStatus === 'Paid') return 'Paid';
+      if (paymentStatus === 'Credit' || paymentStatus === 'Partial') {
+        return 'Pending Payment';
+      }
+      return paymentStatus;
+    };
+
+    const windowPrint = window.open('', '', 'width=800,height=600');
+    windowPrint?.document.write('<html><head><title>Print Bill</title>');
+    windowPrint?.document.write(`
+      <style>
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body {
+          font-family: 'Courier New', monospace;
+          font-size: 11px;
+          width: 80mm;
+          padding: 5mm;
+          background: white;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 10px;
+          border-bottom: 2px dashed #000;
+          padding-bottom: 10px;
+        }
+        .store-name {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .order-info {
+          text-align: center;
+          font-size: 10px;
+          margin-bottom: 10px;
+        }
+        .section {
+          margin-bottom: 10px;
+          padding-bottom: 5px;
+        }
+        .row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 3px;
+          font-size: 11px;
+        }
+        .label {
+          font-weight: bold;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 10px 0;
+        }
+        th {
+          text-align: left;
+          border-bottom: 1px solid #000;
+          padding: 5px 0;
+          font-size: 10px;
+        }
+        td {
+          padding: 5px 0;
+          font-size: 11px;
+          vertical-align: top;
+        }
+        .item-name {
+          width: 55%;
+        }
+        .item-qty {
+          width: 15%;
+          text-align: center;
+        }
+        .item-price {
+          width: 30%;
+          text-align: right;
+        }
+        .totals {
+          border-top: 1px solid #000;
+          padding-top: 5px;
+          margin-top: 5px;
+        }
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 3px 0;
+          font-size: 11px;
+        }
+        .grand-total {
+          font-size: 14px;
+          font-weight: bold;
+          border-top: 2px solid #000;
+          border-bottom: 2px solid #000;
+          padding: 5px 0;
+          margin: 5px 0;
+        }
+        .payment-info {
+          border-top: 1px dashed #000;
+          padding-top: 8px;
+          margin-top: 8px;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 15px;
+          border-top: 2px dashed #000;
+          padding-top: 10px;
+          font-size: 10px;
+        }
+        .thank-you {
+          font-size: 12px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        @media print {
+          body {
+            width: 80mm;
+          }
+        }
+      </style>
+    `);
+    windowPrint?.document.write('</head><body>');
+
+    // Build receipt content
+    let receiptHTML = `
+      <div class="header">
+        <div class="store-name">WELGAMA HARDWARE</div>
+        <div class="order-info">
+          Order #${sale.id}<br>
+          ${formatDate(sale.date)}
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="row">
+          <span class="label">Customer:</span>
+          <span>${sale.customer?.name || 'Walk-in'}</span>
+        </div>
+        ${sale.customer?.phone ? `
+        <div class="row">
+          <span class="label">Phone:</span>
+          <span>${sale.customer.phone}</span>
+        </div>
+        ` : ''}
+        <div class="row">
+          <span class="label">Cashier:</span>
+          <span>${sale.cashier}</span>
+        </div>
+        <div class="row">
+          <span class="label">Payment:</span>
+          <span style="font-weight:bold;">${formatPaymentStatus(sale.paymentStatus).toUpperCase()}</span>
+        </div>
+        <div class="row">
+          <span class="label">Delivery:</span>
+          <span style="font-weight:bold;">${sale.isDelivered ? 'DELIVERED' : 'PENDING'}</span>
+        </div>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th class="item-name">Item</th>
+            <th class="item-qty">Qty</th>
+            <th class="item-price">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    sale.items.forEach(item => {
+      receiptHTML += `
+        <tr>
+          <td class="item-name">${item.productName}</td>
+          <td class="item-qty">${item.quantity} ${item.unit}</td>
+          <td class="item-price">${formatCurrency(item.price)}</td>
+        </tr>
+      `;
+      if (item.discount > 0) {
+        receiptHTML += `
+        <tr>
+          <td colspan="2" style="font-size:9px;padding-left:10px;">Discount: ${item.discountType === 'percentage' ? item.discount + '%' : formatCurrency(item.discount)}</td>
+          <td class="item-price">${formatCurrency(item.subtotal)}</td>
+        </tr>
+        `;
+      } else {
+        receiptHTML += `
+        <tr>
+          <td colspan="2"></td>
+          <td class="item-price">${formatCurrency(item.subtotal)}</td>
+        </tr>
+        `;
+      }
+    });
+
+    const subtotal = sale.items.reduce((sum, item) => sum + item.subtotal, 0);
+    // If order has payment history, sum them. Else use amountPaid from database
+    const totalPaid = (sale.payments && sale.payments.length > 0)
+      ? sale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+      : sale.amountPaid;
+    const remainingBalance = sale.totalAmount - totalPaid;
+
+    receiptHTML += `
+        </tbody>
+      </table>
+      
+      <div class="totals">
+        <div class="total-row">
+          <span>Subtotal:</span>
+          <span>${formatCurrency(subtotal)}</span>
+        </div>
+        <div class="total-row grand-total">
+          <span>TOTAL:</span>
+          <span>${formatCurrency(sale.totalAmount)}</span>
+        </div>
+      </div>
+    `;
+
+    // Show amount paid for both normal paid sales and credit sales with payment history
+    if (sale.paymentStatus === 'Paid' || (sale.payments && sale.payments.length > 0)) {
+      receiptHTML += `
+        <div class="payment-info">
+          <div class="total-row">
+            <span>Amount Paid:</span>
+            <span>${formatCurrency(totalPaid)}</span>
+          </div>
+          ${sale.paymentStatus === 'Paid' && sale.changeGiven > 0 ? `
+          <div class="total-row">
+            <span>Change:</span>
+            <span>${formatCurrency(sale.changeGiven)}</span>
+          </div>
+          ` : ''}
+          ${sale.paymentStatus !== 'Paid' && remainingBalance > 0 ? `
+          <div class="total-row" style="font-weight:bold;">
+            <span>Remaining Balance:</span>
+            <span>${formatCurrency(remainingBalance)}</span>
+          </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    if (sale.payments && sale.payments.length > 0) {
+      receiptHTML += `
+        <div class="payment-info">
+          <div style="font-weight:bold;margin-bottom:5px;">Payment History:</div>
+      `;
+      sale.payments.forEach(payment => {
+        receiptHTML += `
+          <div class="total-row" style="font-size:10px;">
+            <span>${new Date(payment.date).toLocaleDateString()}</span>
+            <span>${formatCurrency(payment.amount)}</span>
+          </div>
+        `;
+      });
+      receiptHTML += `</div>`;
+    }
+
+    receiptHTML += `
+      <div class="footer">
+        <div class="thank-you">THANK YOU!</div>
+        <div>Visit Again</div>
+      </div>
+    `;
+
+    windowPrint?.document.write(receiptHTML);
+    windowPrint?.document.write('</body></html>');
+    windowPrint?.document.close();
+
+    // Auto print after a short delay
+    setTimeout(() => {
+      windowPrint?.print();
+    }, 250);
+  };
+
   return (
     <div className="min-h-screen">
       {/* Decorative background elements */}
@@ -435,16 +791,30 @@ export default function POSClient({ products, session }: POSClientProps) {
       <div className="relative max-w-7xl mx-auto w-full px-4 py-6">
         {/* Page Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
-              <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30">
+                <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  Point of Sale
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Process sales and manage transactions</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Point of Sale
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">Process sales and manage transactions</p>
-            </div>
+            <button
+              onClick={handlePrintRecentBill}
+              disabled={loadingAction === 'print'}
+              className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center gap-2"
+              title="Print Most Recent Bill"
+            >
+              {loadingAction === 'print' ? (
+                <Spinner className="h-5 w-5" />
+              ) : (
+                <Printer className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
 
