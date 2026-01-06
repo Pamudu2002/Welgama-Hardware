@@ -312,7 +312,7 @@ export async function addProduct(formData: FormData) {
         category: product.category.name,
         costPrice: Number(product.costPrice),
         sellingPrice: Number(product.sellingPrice),
-        quantity: product.quantity,
+        quantity: Number(product.quantity),
         unit: product.unit,
       },
     });
@@ -426,9 +426,9 @@ export async function updateProduct(formData: FormData) {
       metadata: {
         productName: updatedProduct.name,
         category: updatedProduct.category.name,
-        previousQuantity: currentProduct.quantity,
+        previousQuantity: Number(currentProduct.quantity),
         newQuantity,
-        quantityChange: newQuantity - currentProduct.quantity,
+        quantityChange: newQuantity - Number(currentProduct.quantity),
         costPrice: Number(updatedProduct.costPrice),
         sellingPrice: Number(updatedProduct.sellingPrice),
         reason: reason || null,
@@ -466,7 +466,7 @@ export async function deleteProduct(productId: number) {
       metadata: {
         productName: deletedProduct.name,
         category: deletedProduct.category.name,
-        quantity: deletedProduct.quantity,
+        quantity: Number(deletedProduct.quantity),
         costPrice: Number(deletedProduct.costPrice),
         sellingPrice: Number(deletedProduct.sellingPrice),
       },

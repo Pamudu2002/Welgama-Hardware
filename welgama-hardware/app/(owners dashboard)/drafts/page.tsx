@@ -13,7 +13,7 @@ export default async function DraftsPage() {
   // Fetch all drafts for the current user
   const draftsRaw = await prisma.draft.findMany({
     where: {
-      userId: parseInt(session.user.id),
+      userId: session.user.id,
     },
     orderBy: {
       updatedAt: 'desc',

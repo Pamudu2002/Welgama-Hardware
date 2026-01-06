@@ -92,7 +92,13 @@ export default function AddProductForm({ categories, units, onSuccess }: AddProd
         formRef.current?.reset();
         setTimeout(() => {
           setMessage('');
-          onSuccess(result.product, result.message);
+          const transformedProduct = {
+            ...result.product,
+            quantity: Number(result.product.quantity),
+            costPrice: Number(result.product.costPrice),
+            sellingPrice: Number(result.product.sellingPrice),
+          };
+          onSuccess(transformedProduct, result.message);
         }, 500);
       }
     });
