@@ -200,8 +200,8 @@ export default function BooksClient({ session }: BooksClientProps) {
   const selectedTotal = useMemo(() => {
     return customerSales
       .filter(sale => selectedSales.includes(sale.id))
-      .reduce((sum, sale) => {
-        const paid = sale.payments.reduce((p, payment) => p + Number(payment.amount), 0);
+      .reduce((sum: number, sale: any) => {
+        const paid = sale.payments.reduce((p: number, payment: any) => p + Number(payment.amount), 0);
         return sum + (Number(sale.totalAmount) - paid);
       }, 0);
   }, [customerSales, selectedSales]);
@@ -218,7 +218,7 @@ export default function BooksClient({ session }: BooksClientProps) {
   // Select all sales
   const selectAll = () => {
     const unpaidSales = customerSales.filter(sale => {
-      const paid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const paid = sale.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       return Number(sale.totalAmount) > paid;
     });
     setSelectedSales(unpaidSales.map(s => s.id));
@@ -270,7 +270,7 @@ export default function BooksClient({ session }: BooksClientProps) {
             const sale = saleMap.get(saleId);
             if (!sale) return;
 
-            const paid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+            const paid = sale.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
             const saleDue = Number(sale.totalAmount) - paid;
             if (saleDue <= 0) return;
 
@@ -548,7 +548,7 @@ export default function BooksClient({ session }: BooksClientProps) {
                 ) : (
                   <div className="space-y-4">
                     {customerSales.map((sale) => {
-                    const totalPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+                    const totalPaid = sale.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
                     const amountDue = Number(sale.totalAmount) - totalPaid;
                     const isFullyPaid = amountDue <= 0;
 

@@ -43,12 +43,12 @@ export default async function DashboardPage() {
   });
 
   // Calculate today's stats
-  const totalRevenue = todaySales.reduce((sum: number, sale) => sum + Number(sale.totalAmount), 0);
-  const totalExpenses = todayExpenses.reduce((sum: number, expense) => sum + Number(expense.amount), 0);
+  const totalRevenue = todaySales.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount), 0);
+  const totalExpenses = todayExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
   
   // Calculate total cost of goods sold
-  const totalCost = todaySales.reduce((sum: number, sale) => {
-    const saleCost = sale.items.reduce((itemSum: number, item) => {
+  const totalCost = todaySales.reduce((sum: number, sale: any) => {
+    const saleCost = sale.items.reduce((itemSum: number, item: any) => {
       return itemSum + (Number(item.costPriceSnapshot) * Number(item.quantity));
     }, 0);
     return sum + saleCost;
@@ -96,12 +96,12 @@ export default async function DashboardPage() {
         },
       });
 
-      const revenue = daySales.reduce((sum: number, sale) => sum + Number(sale.totalAmount), 0);
-      const expenses = dayExpenses.reduce((sum: number, expense) => sum + Number(expense.amount), 0);
+      const revenue = daySales.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount), 0);
+      const expenses = dayExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
       
       // Calculate cost of goods sold for the day
-      const dayCost = daySales.reduce((sum: number, sale) => {
-        const saleCost = sale.items.reduce((itemSum: number, item) => {
+      const dayCost = daySales.reduce((sum: number, sale: any) => {
+        const saleCost = sale.items.reduce((itemSum: number, item: any) => {
           return itemSum + (Number(item.costPriceSnapshot) * Number(item.quantity));
         }, 0);
         return sum + saleCost;

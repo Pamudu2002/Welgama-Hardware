@@ -302,11 +302,11 @@ export default function POSClient({ products, session }: POSClientProps) {
 
   // Calculate totals
   const cartTotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.subtotal, 0);
+    return cart.reduce((sum: number, item: any) => sum + item.subtotal, 0);
   }, [cart]);
 
   const totalDiscount = useMemo(() => {
-    return cart.reduce((sum, item) => {
+    return cart.reduce((sum: number, item: any) => {
       if (item.discountType === 'percentage') {
         return sum + (item.originalPrice * item.quantity * item.discount / 100);
       }
@@ -703,10 +703,10 @@ export default function POSClient({ products, session }: POSClientProps) {
       }
     });
 
-    const subtotal = sale.items.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = sale.items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
     // If order has payment history, sum them. Else use amountPaid from database
     const totalPaid = (sale.payments && sale.payments.length > 0)
-      ? sale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+      ? sale.payments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
       : sale.amountPaid;
     const remainingBalance = sale.totalAmount - totalPaid;
 

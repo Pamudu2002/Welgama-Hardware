@@ -676,10 +676,10 @@ export default function OrdersClient({ session }: OrdersClientProps) {
         }
       });
       
-      const subtotal = selectedSale.items.reduce((sum, item) => sum + item.subtotal, 0);
+      const subtotal = selectedSale.items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
       // If order has payment history, sum them. Else use amountPaid from database
       const totalPaid = (selectedSale.payments && selectedSale.payments.length > 0)
-        ? selectedSale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+        ? selectedSale.payments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
         : selectedSale.amountPaid;
       const remainingBalance = selectedSale.totalAmount - totalPaid;
       
@@ -1014,7 +1014,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="font-medium">
-                    {formatCurrency(selectedSale.items.reduce((sum, item) => sum + item.subtotal, 0))}
+                    {formatCurrency(selectedSale.items.reduce((sum: number, item: any) => sum + item.subtotal, 0))}
                   </span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t-2 border-gray-300 pt-2">
@@ -1025,7 +1025,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
                 {(() => {
                   // If order has payment history, sum them. Else use amountPaid from database
                   const totalPaid = (selectedSale.payments && selectedSale.payments.length > 0)
-                    ? selectedSale.payments.reduce((sum, payment) => sum + payment.amount, 0)
+                    ? selectedSale.payments.reduce((sum: number, payment: any) => sum + payment.amount, 0)
                     : selectedSale.amountPaid;
                   const remainingBalance = selectedSale.totalAmount - totalPaid;
                   
