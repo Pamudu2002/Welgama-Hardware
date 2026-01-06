@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   // Calculate next cursor
   const nextCursor = logs.length === limit ? logs[logs.length - 1].id : null;
 
-  const serialized = logs.map((log) => ({
+  const serialized = logs.map((log: any) => ({
     id: log.id,
     action: log.action,
     description: log.description,

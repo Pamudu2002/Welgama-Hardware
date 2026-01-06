@@ -46,12 +46,12 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate stats
-    const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
-    const totalExpenses = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+    const totalRevenue = sales.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount), 0);
+    const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0);
     
     // Calculate total cost of goods sold
-    const totalCost = sales.reduce((sum, sale) => {
-      const saleCost = sale.items.reduce((itemSum, item) => {
+    const totalCost = sales.reduce((sum: number, sale: any) => {
+      const saleCost = sale.items.reduce((itemSum: number, item: any) => {
         return itemSum + (Number(item.costPriceSnapshot) * Number(item.quantity));
       }, 0);
       return sum + saleCost;
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const totalProfit = totalRevenue - totalCost;
     
     // Count credit sales (pending payments)
-    const creditSalesCount = sales.filter(sale => 
+    const creditSalesCount = sales.filter((sale: any) => 
       sale.paymentStatus === 'Pending' || sale.paymentStatus === 'Credit'
     ).length;
 

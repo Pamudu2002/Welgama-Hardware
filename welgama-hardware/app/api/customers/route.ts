@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const serializedCustomers = customers.map((customer) => ({
+    const serializedCustomers = customers.map((customer: any) => ({
       ...customer,
       balance: Number(customer.balance),
     }));

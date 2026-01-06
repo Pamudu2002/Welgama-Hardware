@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const filteredTotalCount = filteredProducts.length;
 
     // Convert Decimal types to numbers
-    const serializedProducts = paginatedProducts.map((product) => ({
+    const serializedProducts = paginatedProducts.map((product: any) => ({
       ...product,
       costPrice: Number(product.costPrice),
       sellingPrice: Number(product.sellingPrice),
