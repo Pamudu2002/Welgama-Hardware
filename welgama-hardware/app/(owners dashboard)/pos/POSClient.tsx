@@ -678,7 +678,7 @@ export default function POSClient({ products, session }: POSClientProps) {
         <tbody>
     `;
 
-    sale.items.forEach(item => {
+    sale.items.forEach((item: any) => {
       receiptHTML += `
         <tr>
           <td class="item-name">${item.productName}</td>
@@ -755,7 +755,7 @@ export default function POSClient({ products, session }: POSClientProps) {
         <div class="payment-info">
           <div style="font-weight:bold;margin-bottom:5px;">Payment History:</div>
       `;
-      sale.payments.forEach(payment => {
+      sale.payments.forEach((payment: any) => {
         receiptHTML += `
           <div class="total-row" style="font-size:10px;">
             <span>${new Date(payment.date).toLocaleDateString()}</span>
@@ -842,7 +842,7 @@ export default function POSClient({ products, session }: POSClientProps) {
               {searchTerm && (
                 <div className="mt-4 max-h-60 overflow-y-auto space-y-2">
                   {filteredProducts.length > 0 ? (
-                    filteredProducts.map(product => (
+                    filteredProducts.map((product: any) => (
                       <div
                         key={product.id}
                         onClick={() => selectProduct(product)}
@@ -1010,7 +1010,7 @@ export default function POSClient({ products, session }: POSClientProps) {
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-gray-900">{formatCurrency(item.subtotal)}</span>
                         <button
-                          onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
+                          onClick={() => setCart(cart.filter((i: any) => i.productId !== item.productId))}
                           className="text-red-500 hover:text-red-700"
                         >
                           <X className="h-5 w-5" />

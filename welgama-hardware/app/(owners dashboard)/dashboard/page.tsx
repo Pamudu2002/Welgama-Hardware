@@ -62,14 +62,14 @@ export default async function DashboardPage() {
   ).length;
 
   // Get last 7 days data for charts
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
+  const last7Days = Array.from({ length: 7 }, (_: any, i: number) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
     return date;
   });
 
   const chartData = await Promise.all(
-    last7Days.map(async (date) => {
+    last7Days.map(async (date: Date) => {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);

@@ -193,13 +193,13 @@ export default function BooksClient({ session }: BooksClientProps) {
   // Get sales for selected customer
   const customerSales = useMemo(() => {
     if (!selectedCustomerId) return [];
-    return salesData.filter(sale => sale.customer?.id === selectedCustomerId);
+    return salesData.filter((sale: any) => sale.customer?.id === selectedCustomerId);
   }, [selectedCustomerId, salesData]);
 
   // Calculate selected total
   const selectedTotal = useMemo(() => {
     return customerSales
-      .filter(sale => selectedSales.includes(sale.id))
+      .filter((sale: any) => selectedSales.includes(sale.id))
       .reduce((sum: number, sale: any) => {
         const paid = sale.payments.reduce((p: number, payment: any) => p + Number(payment.amount), 0);
         return sum + (Number(sale.totalAmount) - paid);
@@ -209,7 +209,7 @@ export default function BooksClient({ session }: BooksClientProps) {
   // Toggle sale selection
   const toggleSale = (saleId: number) => {
     if (selectedSales.includes(saleId)) {
-      setSelectedSales(selectedSales.filter(id => id !== saleId));
+      setSelectedSales(selectedSales.filter((id: number) => id !== saleId));
     } else {
       setSelectedSales([...selectedSales, saleId]);
     }
@@ -221,7 +221,7 @@ export default function BooksClient({ session }: BooksClientProps) {
       const paid = sale.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       return Number(sale.totalAmount) > paid;
     });
-    setSelectedSales(unpaidSales.map(s => s.id));
+    setSelectedSales(unpaidSales.map((s: any) => s.id));
   };
 
   // Handle payment
@@ -260,10 +260,10 @@ export default function BooksClient({ session }: BooksClientProps) {
 
           // Sort selected sales by date (earliest first) to match backend processing
           const sortedSelectedSales = selectedSales
-            .map(id => saleMap.get(id))
-            .filter(sale => sale !== undefined)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .map(sale => sale.id);
+            .map((id: number) => saleMap.get(id))
+            .filter((sale: any) => sale !== undefined)
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .map((sale: any) => sale.id);
 
           sortedSelectedSales.forEach((saleId, idx) => {
             if (remaining <= 0) return;

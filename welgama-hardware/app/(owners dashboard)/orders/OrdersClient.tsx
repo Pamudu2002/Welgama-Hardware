@@ -400,7 +400,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
     if (status === 'completed') {
       return 'Delivered';
     }
-    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    return status.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   const getDeliveryStatus = (sale: Sale) => (sale.isDelivered ? 'completed' : 'pending_delivery');
@@ -651,7 +651,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
           <tbody>
       `;
       
-      selectedSale.items.forEach(item => {
+      selectedSale.items.forEach((item: any) => {
         receiptHTML += `
           <tr>
             <td class="item-name">${item.productName}</td>
@@ -728,7 +728,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
           <div class="payment-info">
             <div style="font-weight:bold;margin-bottom:5px;">Payment History:</div>
         `;
-        selectedSale.payments.forEach(payment => {
+        selectedSale.payments.forEach((payment: any) => {
           receiptHTML += `
             <div class="total-row" style="font-size:10px;">
               <span>${new Date(payment.date).toLocaleDateString()}</span>

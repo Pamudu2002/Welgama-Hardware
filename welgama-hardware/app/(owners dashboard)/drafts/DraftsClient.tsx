@@ -67,7 +67,7 @@ export default function DraftsClient({ drafts, customers }: DraftsClientProps) {
 
   const getCustomerName = (customerId: number | null) => {
     if (!customerId) return 'Walk-in Customer';
-    return customers.find(c => c.id === customerId)?.name || 'Unknown';
+    return customers.find((c: any) => c.id === customerId)?.name || 'Unknown';
   };
 
   const getItemsCount = (itemsJson: string) => {

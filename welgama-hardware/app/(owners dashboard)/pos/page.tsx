@@ -31,7 +31,7 @@ export default async function POSPage() {
   });
 
   // Convert Decimal to number
-  const products = productsRaw.map(p => ({
+  const products = productsRaw.map((p: any) => ({
     ...p,
     sellingPrice: Number(p.sellingPrice),
     costPrice: Number(p.costPrice),

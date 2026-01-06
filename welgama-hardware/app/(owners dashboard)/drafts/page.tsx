@@ -21,7 +21,7 @@ export default async function DraftsPage() {
   });
 
   // Convert to plain objects
-  const drafts = draftsRaw.map(d => ({
+  const drafts = draftsRaw.map((d: any) => ({
     ...d,
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
