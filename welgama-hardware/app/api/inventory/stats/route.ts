@@ -24,17 +24,17 @@ export async function GET() {
 
     // Calculate totals
     const totalCostValue = allProducts.reduce(
-      (acc, p) => acc + Number(p.costPrice) * Number(p.quantity),
+      (acc: number, p: any) => acc + Number(p.costPrice) * Number(p.quantity),
       0
     );
 
     const totalSellingValue = allProducts.reduce(
-      (acc, p) => acc + Number(p.sellingPrice) * Number(p.quantity),
+      (acc: number, p: any) => acc + Number(p.sellingPrice) * Number(p.quantity),
       0
     );
 
     const lowStockCount = allProducts.filter(
-      (p) => Number(p.quantity) < p.lowStockThreshold
+      (p: any) => Number(p.quantity) < p.lowStockThreshold
     ).length;
 
     return NextResponse.json({

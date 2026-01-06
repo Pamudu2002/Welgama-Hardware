@@ -217,7 +217,7 @@ export default function BooksClient({ session }: BooksClientProps) {
 
   // Select all sales
   const selectAll = () => {
-    const unpaidSales = customerSales.filter(sale => {
+    const unpaidSales = customerSales.filter((sale: any) => {
       const paid = sale.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       return Number(sale.totalAmount) > paid;
     });
@@ -265,7 +265,7 @@ export default function BooksClient({ session }: BooksClientProps) {
             .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .map((sale: any) => sale.id);
 
-          sortedSelectedSales.forEach((saleId, idx) => {
+          sortedSelectedSales.forEach((saleId: any, idx: number) => {
             if (remaining <= 0) return;
             const sale = saleMap.get(saleId);
             if (!sale) return;

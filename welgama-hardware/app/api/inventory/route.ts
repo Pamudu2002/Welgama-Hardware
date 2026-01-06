@@ -54,15 +54,15 @@ export async function GET(request: NextRequest) {
     // Prioritize products that start with the search term
     if (search) {
       const searchLower = search.toLowerCase();
-      const startsWithSearch = allProducts.filter(p => p.name.toLowerCase().startsWith(searchLower));
-      const containsSearch = allProducts.filter(p => !p.name.toLowerCase().startsWith(searchLower));
+      const startsWithSearch = allProducts.filter((p: any) => p.name.toLowerCase().startsWith(searchLower));
+      const containsSearch = allProducts.filter((p: any) => !p.name.toLowerCase().startsWith(searchLower));
       allProducts = [...startsWithSearch, ...containsSearch];
     }
 
     // Apply low stock filter in-memory (since it requires comparing quantity with lowStockThreshold)
     let filteredProducts = allProducts;
     if (lowStockOnly) {
-      filteredProducts = allProducts.filter(p => Number(p.quantity) < p.lowStockThreshold);
+      filteredProducts = allProducts.filter((p: any) => Number(p.quantity) < p.lowStockThreshold);
     }
 
     // Apply pagination to filtered results
