@@ -57,7 +57,7 @@ export default async function DashboardPage() {
   const totalProfit = totalRevenue - totalCost;
   
   // Count credit sales (pending payments)
-  const creditSalesCount = todaySales.filter(sale => 
+  const creditSalesCount = todaySales.filter((sale: any) => 
     sale.paymentStatus === 'Pending' || sale.paymentStatus === 'Credit'
   ).length;
 
@@ -130,9 +130,9 @@ export default async function DashboardPage() {
   });
 
   const lowStockProducts = allProducts
-    .filter(p => Number(p.quantity) < p.lowStockThreshold)
+    .filter((p: any) => Number(p.quantity) < p.lowStockThreshold)
     .slice(0, 10)
-    .map(p => ({
+    .map((p: any) => ({
       id: p.id,
       name: p.name,
       quantity: Number(p.quantity),
