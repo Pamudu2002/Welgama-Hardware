@@ -184,11 +184,11 @@ export default async function DashboardPage() {
           }}
           lowStockProducts={lowStockProducts}
           chartData={{
-            labels: chartData.map((d) => d.label),
-            revenue: chartData.map((d) => d.revenue),
-            sales: chartData.map((d) => d.sales),
-            expenses: chartData.map((d) => d.expenses),
-            profit: chartData.map((d) => d.profit),
+            labels: chartData.map((d: any) => d.label),
+            revenue: chartData.map((d: any) => d.revenue),
+            sales: chartData.map((d: any) => d.sales),
+            expenses: chartData.map((d: any) => d.expenses),
+            profit: chartData.map((d: any) => d.profit),
           }}
           totalProducts={totalProducts}
           activeStaff={activeStaff}

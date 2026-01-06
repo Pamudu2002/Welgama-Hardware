@@ -40,7 +40,7 @@ export default async function LogsPage() {
   });
   const activeUsersCount = uniqueUsers.length;
 
-  const serialized: ActivityLogEntry[] = logs.map((log) => ({
+  const serialized: ActivityLogEntry[] = logs.map((log: any) => ({
     id: log.id,
     action: log.action,
     description: log.description,

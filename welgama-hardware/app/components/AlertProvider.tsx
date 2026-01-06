@@ -117,7 +117,7 @@ export function AlertProvider({ children }: { children: ReactNode }) {
       
       {/* Alert Container */}
       <div className="fixed top-4 right-4 z-[9999] space-y-3 pointer-events-none">
-        {alerts.map((alert) => {
+        {alerts.map((alert: any) => {
           const styles = getAlertStyles(alert.type);
           const Icon = styles.Icon;
           

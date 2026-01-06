@@ -70,7 +70,7 @@ export function TableSkeleton({ rows = 5, columns = 6 }: { rows?: number; column
         <table className="w-full">
           <thead className="bg-linear-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
             <tr>
-              {Array.from({ length: columns }).map((_, i) => (
+              {Array.from({ length: columns }).map((_: any, i: number) => (
                 <th key={i} className="px-4 py-3">
                   <div className="h-4 bg-gray-200 rounded"></div>
                 </th>
@@ -78,9 +78,9 @@ export function TableSkeleton({ rows = 5, columns = 6 }: { rows?: number; column
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {Array.from({ length: rows }).map((_, rowIndex) => (
+            {Array.from({ length: rows }).map((_: any, rowIndex: number) => (
               <tr key={rowIndex} className="hover:bg-blue-50/50">
-                {Array.from({ length: columns }).map((_, colIndex) => (
+                {Array.from({ length: columns }).map((_: any, colIndex: number) => (
                   <td key={colIndex} className="px-4 py-3">
                     <div className="h-4 bg-gray-100 rounded"></div>
                   </td>

@@ -994,7 +994,7 @@ export default function POSClient({ products, session }: POSClientProps) {
                 <p className="text-gray-500 text-center py-8">Cart is empty</p>
               ) : (
                 <div className="space-y-2">
-                  {cart.map((item) => (
+                  {cart.map((item: any) => (
                     <div key={item.productId} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                       <div className="flex-1">
                         <p className="font-medium text-gray-900">{item.productName}</p>
@@ -1128,7 +1128,7 @@ export default function POSClient({ products, session }: POSClientProps) {
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-100">
-                        {customerResults.map((customer, index) => (
+                        {customerResults.map((customer: any, index: number) => (
                           <button
                             key={customer.id}
                             onClick={() => handleSelectCustomer(customer)}

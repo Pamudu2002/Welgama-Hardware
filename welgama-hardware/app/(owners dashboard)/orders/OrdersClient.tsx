@@ -184,14 +184,14 @@ function DateRangeCalendar({ value, onChange }: { value: DateRange; onChange: (r
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-[11px] font-semibold text-gray-500 mb-1.5">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day: string) => (
           <span key={day} className="text-center">
             {day}
           </span>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1 select-none" onMouseLeave={() => setHoveredDate(null)}>
-        {days.map((day) => {
+        {days.map((day: any) => {
           const hasCompleteRange = Boolean(displayedRange.start && displayedRange.end);
           const isStart = displayedRange.start ? isSameDay(day, displayedRange.start) : false;
           const isEnd = displayedRange.end ? isSameDay(day, displayedRange.end) : false;
@@ -464,7 +464,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
         if (result.success) {
           showAlert('success', 'Order Delivered!', result.message);
           setSaleData((prev) =>
-            prev.map((sale) =>
+            prev.map((sale: any) =>
               sale.id === saleId ? { ...sale, isDelivered: true, orderStatus: 'completed' } : sale
             )
           );
@@ -866,7 +866,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
                     </td>
                   </tr>
                 ) : (
-                  paginatedSales.map((sale) => {
+                  paginatedSales.map((sale: any) => {
                     const deliveryStatus = getDeliveryStatus(sale);
                     return (
                       <tr key={sale.id} className="hover:bg-blue-50/50 transition-colors">
@@ -991,7 +991,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedSale.items.map((item) => (
+                  {selectedSale.items.map((item: any) => (
                     <tr key={item.id} className="border-b border-gray-200">
                       <td className="py-2">{item.productName}</td>
                       <td className="text-center py-2">{item.quantity} {item.unit}</td>
@@ -1058,7 +1058,7 @@ export default function OrdersClient({ session }: OrdersClientProps) {
                 {selectedSale.payments.length > 0 && (
                   <div className="border-t border-gray-200 pt-2 mt-2">
                     <p className="font-medium mb-1">Payment History:</p>
-                    {selectedSale.payments.map((payment) => (
+                    {selectedSale.payments.map((payment: any) => (
                       <div key={payment.id} className="flex justify-between text-xs text-gray-600">
                         <span>{formatDate(payment.date)}</span>
                         <span>{formatCurrency(payment.amount)}</span>

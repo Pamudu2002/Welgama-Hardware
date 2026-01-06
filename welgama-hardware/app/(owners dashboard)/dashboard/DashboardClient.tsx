@@ -150,14 +150,14 @@ function DateCalendar({ value, onChange }: { value: Date; onChange: (date: Date)
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-[11px] font-semibold text-gray-500 mb-1.5">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day: string) => (
           <span key={day} className="text-center">
             {day}
           </span>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1 select-none">
-        {days.map((day) => {
+        {days.map((day: any) => {
           const selected = isSelected(day);
           const today = isToday(day);
           
@@ -377,7 +377,7 @@ export default function DashboardClient({
 
       {/* Stats Cards */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statsCards.map((stat, index) => {
+        {statsCards.map((stat: any, index: number) => {
           const Icon = stat.icon;
           const isProfitCard = stat.title === 'Total Profit';
           const isRevenueCard = stat.title === 'Total Revenue';
@@ -508,7 +508,7 @@ export default function DashboardClient({
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {lowStockProducts.map((product) => (
+              {lowStockProducts.map((product: any) => (
                 <div key={product.id} className="p-4 bg-red-50 border border-red-200 rounded-xl">
                   <p className="font-semibold text-gray-900 mb-1">{product.name}</p>
                   <div className="flex items-center justify-between text-sm">

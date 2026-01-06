@@ -115,7 +115,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Dynamic Navigation */}
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
             <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Navigation</p>
-            {menuItems.map((item) => {
+            {menuItems.map((item: any) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
 

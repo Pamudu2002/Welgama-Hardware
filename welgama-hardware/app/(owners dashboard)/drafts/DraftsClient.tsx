@@ -121,7 +121,7 @@ export default function DraftsClient({ drafts, customers }: DraftsClientProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {drafts.map((draft) => (
+            {drafts.map((draft: any) => (
               <div
                 key={draft.id}
                 className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all cursor-pointer border border-gray-200 hover:border-blue-500"

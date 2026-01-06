@@ -83,7 +83,7 @@ export function PaginationControls({
 
           {/* Page numbers */}
           <div className="hidden sm:flex gap-1">
-            {getPageNumbers().map((page, index) =>
+            {getPageNumbers().map((page: any, index: number) =>
               page === '...' ? (
                 <span
                   key={`dots-${index}`}

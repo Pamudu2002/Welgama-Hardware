@@ -144,7 +144,7 @@ export default function AddProductForm({ categories, units, onSuccess }: AddProd
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             >
               <option value="">Select a category</option>
-              {availableCategories.map((cat) => (
+              {availableCategories.map((cat: any) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
@@ -247,7 +247,7 @@ export default function AddProductForm({ categories, units, onSuccess }: AddProd
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             >
               <option value="">Select a unit</option>
-              {availableUnits.map((unit) => (
+              {availableUnits.map((unit: any) => (
                 <option key={unit.id} value={unit.name}>
                   {unit.name}
                 </option>

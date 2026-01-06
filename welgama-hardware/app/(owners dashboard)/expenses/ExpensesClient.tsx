@@ -277,7 +277,7 @@ export default function ExpensesClient({ session }: ExpensesClientProps) {
                   </td>
                 </tr>
               ) : (
-                currentExpenses.map((expense) => (
+                currentExpenses.map((expense: any) => (
                   <tr key={expense.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(expense.createdAt).toLocaleString('en-LK', {

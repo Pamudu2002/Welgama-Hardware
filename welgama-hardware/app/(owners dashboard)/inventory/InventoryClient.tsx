@@ -466,7 +466,7 @@ export default function InventoryClient({ categories, units, session }: Inventor
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {paginatedItems.map((item) => (
+                {paginatedItems.map((item: any) => (
                   <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
                     {editingId === item.id ? (
                       // Edit Mode
@@ -486,7 +486,7 @@ export default function InventoryClient({ categories, units, session }: Inventor
                             onChange={(e) => setEditData({ ...editData, categoryId: parseInt(e.target.value) })}
                             className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {categories.map((cat) => (
+                            {categories.map((cat: any) => (
                               <option key={cat.id} value={cat.id}>
                                 {cat.name}
                               </option>
@@ -570,7 +570,7 @@ export default function InventoryClient({ categories, units, session }: Inventor
                             onChange={(e) => setEditData({ ...editData, unit: e.target.value })}
                             className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {AVAILABLE_UNITS.map((unit) => (
+                            {AVAILABLE_UNITS.map((unit: string) => (
                               <option key={unit} value={unit}>
                                 {unit}
                               </option>

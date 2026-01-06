@@ -251,7 +251,7 @@ export default function BooksClient({ session }: BooksClientProps) {
         const updatedBalance = result.remainingBalance ?? Math.max(currentBalance - appliedAmount, 0);
 
         setSalesData((prevSales) => {
-          const saleMap = new Map(prevSales.map((sale) => [
+          const saleMap = new Map(prevSales.map((sale: any) => [
             sale.id,
             { ...sale, payments: [...sale.payments] },
           ]));
@@ -290,11 +290,11 @@ export default function BooksClient({ session }: BooksClientProps) {
             sale.paymentStatus = newPaid >= Number(sale.totalAmount) ? 'Paid' : 'Partial';
           });
 
-          return prevSales.map((sale) => saleMap.get(sale.id) || sale);
+          return prevSales.map((sale: any) => saleMap.get(sale.id) || sale);
         });
 
         setCustomerData((prev) =>
-          prev.map((customer) =>
+          prev.map((customer: any) =>
             customer.id === selectedCustomerId
               ? { ...customer, balance: updatedBalance }
               : customer
@@ -383,7 +383,7 @@ export default function BooksClient({ session }: BooksClientProps) {
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-100">
-                      {customerData.map((customer, index) => (
+                      {customerData.map((customer: any, index: number) => (
                         <button
                           key={customer.id}
                           onClick={() => handleSelectCustomer(customer)}
@@ -547,7 +547,7 @@ export default function BooksClient({ session }: BooksClientProps) {
                   <p className="text-gray-500 text-center py-8">No credit sales found for this customer</p>
                 ) : (
                   <div className="space-y-4">
-                    {customerSales.map((sale) => {
+                    {customerSales.map((sale: any) => {
                     const totalPaid = sale.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
                     const amountDue = Number(sale.totalAmount) - totalPaid;
                     const isFullyPaid = amountDue <= 0;
@@ -589,7 +589,7 @@ export default function BooksClient({ session }: BooksClientProps) {
                             <div className="bg-gray-50 rounded p-3 mb-2">
                               <p className="text-xs font-semibold text-gray-700 mb-2">Items:</p>
                               {sale.items && sale.items.length > 0 ? (
-                                sale.items.map((item, idx) => (
+                                sale.items.map((item: any, idx: number) => (
                                   <div key={idx} className="text-xs text-gray-600 flex justify-between">
                                     <span>
                                       {item.product.name} x {item.quantity} {item.product.unit}

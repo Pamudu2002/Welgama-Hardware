@@ -32,7 +32,7 @@ const formatDateTime = (value: string) => {
 const formatActionLabel = (action: string) =>
   action
     .split('.')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' · ');
 
 const formatMetaValue = (key: string, value: unknown) => {
@@ -319,14 +319,14 @@ function DateRangeCalendar({ value, onChange }: { value: DateRange; onChange: (r
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-[11px] font-semibold text-gray-500 mb-1.5">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day: string) => (
           <span key={day} className="text-center">
             {day}
           </span>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1 select-none" onMouseLeave={() => setHoveredDate(null)}>
-        {days.map((day) => {
+        {days.map((day: any) => {
           const hasCompleteRange = Boolean(displayedRange.start && displayedRange.end);
           const isStart = displayedRange.start ? isSameDay(day, displayedRange.start) : false;
           const isEnd = displayedRange.end ? isSameDay(day, displayedRange.end) : false;
@@ -554,7 +554,7 @@ export default function LogsClient({ initialLogs, initialCursor, totalEventsCoun
           </div>
         ) : (
           <ul className="space-y-3">
-            {filteredLogs.map((log) => {
+            {filteredLogs.map((log: any) => {
               const config = getActionConfig(log.action);
               const Icon = config.icon;
               
@@ -587,7 +587,7 @@ export default function LogsClient({ initialLogs, initialCursor, totalEventsCoun
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {Object.entries(log.metadata as Record<string, unknown>)
                                   .filter(([key]) => !key.toLowerCase().includes('id') || key === 'saleId' || key === 'draftId')
-                                  .map(([key, value]) => {
+                                  .map(([key, value]: [string, any]) => {
                                     const displayValue = formatMetaValue(key, value);
                                     if (displayValue === '—' || displayValue === 'null' || displayValue === 'undefined') return null;
                                     

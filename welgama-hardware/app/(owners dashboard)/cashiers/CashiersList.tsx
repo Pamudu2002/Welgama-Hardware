@@ -52,7 +52,7 @@ export default function CashiersList({ cashiers }: CashiersListProps) {
         </div>
       ) : (
         <ul className="space-y-2 sm:space-y-3">
-          {cashiers.map((user) => (
+          {cashiers.map((user: any) => (
             <li key={user.id} className="flex flex-col gap-3 bg-white/50 p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200/50 hover:shadow-md hover:border-blue-300/50 transition-all duration-200">
               <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
