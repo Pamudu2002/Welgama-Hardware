@@ -189,8 +189,8 @@ export async function createCashier(formData: FormData) {
 // Add a new category
 export async function addCategory(name: string) {
   const session = await auth();
-  if (session?.user?.role !== 'Owner') {
-    return { success: false, message: 'Unauthorized: Only Owners can add categories.' };
+  if (!canManageInventory(session?.user?.role)) {
+    return { success: false, message: 'Unauthorized: Only authorized staff can add categories.' };
   }
   const actor = getActorName(session?.user as SessionActor);
 
